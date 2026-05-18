@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -158,9 +159,13 @@ export default function LoginPage() {
               color: "#bbbdf6",
               textDecoration: "none",
               fontSize: "0.875rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.35rem",
             }}
           >
-            ← Back to Home
+            <ArrowLeft size={14} />
+            <span>Back to Home</span>
           </Link>
         </div>
       </div>

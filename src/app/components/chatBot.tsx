@@ -1,134 +1,146 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, MessageSquare, Rocket, Send, X } from "lucide-react";
+import {
+  BotLink,
+  Combination,
+  COMBINATIONS_STORAGE_KEY,
+  FALLBACK_STORAGE_KEY,
+  Keyword,
+  KEYWORDS_STORAGE_KEY,
+  loadCombinations,
+  loadFallback,
+  loadKeywords,
+} from "../admin/bot-config";
 
-interface Message {
+type Message = {
   id: number;
   text: string;
   isUser: boolean;
-  links?: { text: string; url: string }[];
+  links?: BotLink[];
+};
+
+const WELCOME_MESSAGE: Message = {
+  id: 1,
+  text: "Hello! I'm your space assistant. Ask me about recent photos, articles, or specific topics like Mars and Jupiter.",
+  isUser: false,
+};
+
+function tokenize(message: string): string[] {
+  return message.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+}
+
+function findCombinationMatch(
+  tokens: string[],
+  combinations: Combination[],
+): Combination | null {
+  const tokenSet = new Set(tokens);
+  const matches = combinations.filter((combination) =>
+    combination.words.every((word) => tokenSet.has(word.toLowerCase())),
+  );
+  if (matches.length === 0) return null;
+  return matches.sort((a, b) => b.words.length - a.words.length)[0];
+}
+
+function findKeywordMatch(
+  tokens: string[],
+  keywords: Keyword[],
+): Keyword | null {
+  const tokenSet = new Set(tokens);
+  return (
+    keywords.find((keyword) =>
+      tokenSet.has(keyword.keyword.toLowerCase()),
+    ) ?? null
+  );
 }
 
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: "Hello! I'm your space assistant. I can help you find space photos, articles, and information. What would you like to explore today?",
-      isUser: false,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const getBotResponse = (userMessage: string): Message => {
-    const lowerMessage = userMessage.toLowerCase();
+  const keywordsRef = useRef<Keyword[]>([]);
+  const combinationsRef = useRef<Combination[]>([]);
+  const fallbackRef = useRef<string>("");
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-    if (
-      lowerMessage.includes("recent picture") ||
-      lowerMessage.includes("recent photo") ||
-      lowerMessage.includes("latest photo")
-    ) {
+  useEffect(() => {
+    keywordsRef.current = loadKeywords();
+    combinationsRef.current = loadCombinations();
+    fallbackRef.current = loadFallback();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === KEYWORDS_STORAGE_KEY) {
+        keywordsRef.current = loadKeywords();
+      } else if (event.key === COMBINATIONS_STORAGE_KEY) {
+        combinationsRef.current = loadCombinations();
+      } else if (event.key === FALLBACK_STORAGE_KEY) {
+        fallbackRef.current = loadFallback();
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  const buildResponse = (userMessage: string): Message => {
+    const tokens = tokenize(userMessage);
+
+    const combinationMatch = findCombinationMatch(
+      tokens,
+      combinationsRef.current,
+    );
+    if (combinationMatch) {
       return {
         id: Date.now(),
-        text: "Here are the most recent space photos:",
+        text: combinationMatch.response,
         isUser: false,
-        links: [
-          { text: "View Recent Photos", url: "/recent-photos" },
-          { text: "Daily Space Photo", url: "/" },
-        ],
+        links: combinationMatch.links,
       };
     }
 
-    if (
-      lowerMessage.includes("recent article") ||
-      lowerMessage.includes("latest article") ||
-      lowerMessage.includes("news")
-    ) {
+    const keywordMatch = findKeywordMatch(tokens, keywordsRef.current);
+    if (keywordMatch) {
       return {
         id: Date.now(),
-        text: "Check out these recent space articles:",
+        text: keywordMatch.response,
         isUser: false,
-        links: [
-          { text: "Recent Articles", url: "/recent-articles" },
-          { text: "Featured Article", url: "/article/1" },
-        ],
-      };
-    }
-
-    if (lowerMessage.includes("mars")) {
-      return {
-        id: Date.now(),
-        text: "Here's some information about Mars:",
-        isUser: false,
-        links: [
-          { text: "Mars Photos", url: "/search?q=mars" },
-          { text: "Mars Articles", url: "/recent-articles" },
-          { text: "NASA Mars Mission", url: "https://mars.nasa.gov/" },
-        ],
-      };
-    }
-
-    if (lowerMessage.includes("jupiter")) {
-      return {
-        id: Date.now(),
-        text: "Here's some information about Jupiter:",
-        isUser: false,
-        links: [
-          { text: "Jupiter Photos", url: "/search?q=jupiter" },
-          {
-            text: "Juno Mission",
-            url: "https://www.nasa.gov/mission_pages/juno/main/index.html",
-          },
-        ],
-      };
-    }
-
-    if (lowerMessage.includes("login") || lowerMessage.includes("sign in")) {
-      return {
-        id: Date.now(),
-        text: "You can log in to your account here:",
-        isUser: false,
-        links: [{ text: "Go to Login Page", url: "/login" }],
-      };
-    }
-
-    if (
-      lowerMessage.includes("help") ||
-      lowerMessage.includes("what can you do")
-    ) {
-      return {
-        id: Date.now(),
-        text: "I can help you with:\n• Finding recent space photos\n• Reading latest space articles\n• Information about planets (Mars, Jupiter)\n• Navigating to different pages\n• Logging into your account\n\nWhat would you like to explore?",
-        isUser: false,
+        links: keywordMatch.links,
       };
     }
 
     return {
       id: Date.now(),
-      text: "I can help you find recent space photos, articles, or information about planets like Mars and Jupiter. Try asking me something like 'Show me recent photos' or 'Tell me about Mars'!",
+      text: fallbackRef.current || "I can't help you with your issue.",
       isUser: false,
     };
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const handleSendMessage = () => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
 
     const userMessage: Message = {
       id: Date.now(),
-      text: input,
+      text: trimmed,
       isUser: true,
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
-    setTimeout(() => {
-      const response = getBotResponse(input);
+    window.setTimeout(() => {
+      const response = buildResponse(trimmed);
       setMessages((prev) => [...prev, response]);
       setIsLoading(false);
-    }, 500);
+    }, 400);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -169,8 +181,9 @@ export default function ChatBot() {
           e.currentTarget.style.transform = "scale(1)";
           e.currentTarget.style.backgroundColor = "#7a5980";
         }}
+        aria-label={isOpen ? "Close chat" : "Open chat"}
       >
-        {isOpen ? "✕" : "💬"}
+        {isOpen ? <X size={22} strokeWidth={2.5} /> : <MessageSquare size={24} />}
       </button>
 
       {isOpen && (
@@ -201,7 +214,21 @@ export default function ChatBot() {
               gap: "10px",
             }}
           >
-            <span style={{ fontSize: "24px" }}>🚀</span>
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "10px",
+                background: "linear-gradient(135deg, #bbbdf6 0%, #7a5980 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#1a1a2e",
+                flexShrink: 0,
+              }}
+            >
+              <Rocket size={20} strokeWidth={2.2} />
+            </div>
             <div>
               <h3 style={{ color: "#bbbdf6", margin: 0, fontSize: "1rem" }}>
                 Space Assistant
@@ -252,7 +279,7 @@ export default function ChatBot() {
                   >
                     {message.text}
                   </p>
-                  {message.links && (
+                  {message.links && message.links.length > 0 && (
                     <div
                       style={{
                         marginTop: "0.75rem",
@@ -269,11 +296,14 @@ export default function ChatBot() {
                             color: message.isUser ? "#bbbdf6" : "#9b73a3",
                             textDecoration: "none",
                             fontSize: "0.875rem",
-                            display: "inline-block",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
                           }}
                           onClick={() => setIsOpen(false)}
                         >
-                          {link.text} →
+                          <span>{link.text}</span>
+                          <ArrowRight size={14} />
                         </Link>
                       ))}
                     </div>
@@ -292,38 +322,13 @@ export default function ChatBot() {
                     gap: "4px",
                   }}
                 >
-                  <span
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "#bbbdf6",
-                      animation: "bounce 1.4s infinite ease-in-out both",
-                    }}
-                  />
-                  <span
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "#bbbdf6",
-                      animation: "bounce 1.4s infinite ease-in-out both",
-                      animationDelay: "-0.32s",
-                    }}
-                  />
-                  <span
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "#bbbdf6",
-                      animation: "bounce 1.4s infinite ease-in-out both",
-                      animationDelay: "-0.16s",
-                    }}
-                  />
+                  <span className="chat-dot" style={dotStyle} />
+                  <span className="chat-dot" style={dotStyle} />
+                  <span className="chat-dot" style={dotStyle} />
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           <div
@@ -338,7 +343,7 @@ export default function ChatBot() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Ask about space..."
               style={{
                 flex: 1,
@@ -354,8 +359,9 @@ export default function ChatBot() {
             <button
               onClick={handleSendMessage}
               disabled={isLoading || !input.trim()}
+              aria-label="Send message"
               style={{
-                padding: "0.5rem 1rem",
+                padding: "0.5rem 0.85rem",
                 backgroundColor: "#7a5980",
                 color: "white",
                 border: "none",
@@ -363,26 +369,24 @@ export default function ChatBot() {
                 cursor: isLoading || !input.trim() ? "not-allowed" : "pointer",
                 opacity: isLoading || !input.trim() ? 0.5 : 1,
                 transition: "all 0.2s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              Send
+              <Send size={16} />
             </button>
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes bounce {
-          0%,
-          80%,
-          100% {
-            transform: scale(0);
-          }
-          40% {
-            transform: scale(1);
-          }
-        }
-      `}</style>
     </>
   );
 }
+
+const dotStyle: React.CSSProperties = {
+  width: "8px",
+  height: "8px",
+  borderRadius: "50%",
+  backgroundColor: "#bbbdf6",
+  display: "inline-block",
+};

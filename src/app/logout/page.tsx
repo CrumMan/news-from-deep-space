@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 
 export default function LogoutPage() {
   const router = useRouter();
@@ -34,8 +35,23 @@ export default function LogoutPage() {
         className="hero-card"
         style={{ maxWidth: "500px", margin: "0 auto", textAlign: "center" }}
       >
-        {/* Logout Icon */}
-        <div style={{ fontSize: "80px", marginBottom: "1rem" }}>👋</div>
+        <div
+          style={{
+            width: "72px",
+            height: "72px",
+            margin: "0 auto 1.25rem",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background:
+              "linear-gradient(135deg, rgba(187, 189, 246, 0.2) 0%, rgba(122, 89, 128, 0.2) 100%)",
+            border: "1px solid rgba(187, 189, 246, 0.3)",
+            color: "#bbbdf6",
+          }}
+        >
+          <CheckCircle2 size={36} strokeWidth={1.8} />
+        </div>
 
         <h1
           className="text-3xl font-bold"
