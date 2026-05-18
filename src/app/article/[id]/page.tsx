@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, Globe2, Mountain, Rocket, Telescope } from "lucide-react";
 
 interface Article {
   id: string;
@@ -152,11 +153,14 @@ export default function ArticlePage() {
           style={{
             color: "#bbbdf6",
             textDecoration: "none",
-            display: "inline-block",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.4rem",
             marginBottom: "1rem",
           }}
         >
-          ← Back to Home
+          <ArrowLeft size={16} />
+          <span>Back to Home</span>
         </Link>
 
         <div
@@ -172,19 +176,30 @@ export default function ArticlePage() {
             justifyContent: "center",
           }}
         >
-          <div style={{ textAlign: "center", color: "white" }}>
-            <div style={{ fontSize: "64px", marginBottom: "10px" }}>
-              {article.id === "1" && "🔴"}
-              {article.id === "2" && "🔭"}
-              {article.id === "3" && "🚀"}
-              {article.id === "4" && "🪐"}
+          <div
+            style={{
+              textAlign: "center",
+              color: "white",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            <div style={{ color: "#ffffff" }}>
+              {article.id === "1" && (
+                <Mountain size={56} strokeWidth={1.5} />
+              )}
+              {article.id === "2" && (
+                <Telescope size={56} strokeWidth={1.5} />
+              )}
+              {article.id === "3" && <Rocket size={56} strokeWidth={1.5} />}
+              {article.id === "4" && <Globe2 size={56} strokeWidth={1.5} />}
             </div>
             <div style={{ fontSize: "14px", color: "#bbbdf6" }}>
               {article.title}
             </div>
-            <div style={{ fontSize: "12px", marginTop: "5px", opacity: 0.7 }}>
-              Article Image
-            </div>
+            <div style={{ fontSize: "12px", opacity: 0.7 }}>Article Image</div>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Mail, MapPin, Phone, Rocket } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -197,7 +198,7 @@ export default function Footer() {
                   gap: "0.5rem",
                 }}
               >
-                <span>📧</span>
+                <Mail size={16} color="#bbbdf6" />
                 <a
                   href="mailto:info@nfds.com"
                   style={{
@@ -223,13 +224,13 @@ export default function Footer() {
                   gap: "0.5rem",
                 }}
               >
-                <span>📞</span>
+                <Phone size={16} color="#bbbdf6" />
                 <span style={{ fontSize: "0.875rem" }}>+1 (123) 123-4567</span>
               </li>
               <li
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
-                <span>📍</span>
+                <MapPin size={16} color="#bbbdf6" />
                 <span style={{ fontSize: "0.875rem" }}>
                   ISS, Low Earth Orbit (LEO)
                 </span>
@@ -344,8 +345,16 @@ export default function Footer() {
             &copy; {currentYear} NFDS - News From Deep Space. All rights
             reserved.
           </p>
-          <p style={{ marginTop: "0.5rem" }}>
-            Designed for space enthusiasts around the world 🚀
+          <p
+            style={{
+              marginTop: "0.5rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.4rem",
+            }}
+          >
+            Designed for space enthusiasts around the world
+            <Rocket size={14} />
           </p>
         </div>
       </div>

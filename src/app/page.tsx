@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 
 const PLACEHOLDER_PHOTO = {
   title: "The Majestic Andromeda Galaxy",
@@ -200,8 +201,17 @@ export default function HomePage() {
               <p className="card-description">
                 {dailyPhoto.explanation.substring(0, 150)}...
               </p>
-              <Link href={`/photo/${dailyPhoto.date}`} className="card-link">
-                View Description →
+              <Link
+                href={`/photo/${dailyPhoto.date}`}
+                className="card-link"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                }}
+              >
+                <span>View Description</span>
+                <ArrowRight size={14} />
               </Link>
             </div>
 
@@ -244,8 +254,17 @@ export default function HomePage() {
               <p className="card-description">
                 {dailyArticle.summary.substring(0, 150)}...
               </p>
-              <Link href="/article" className="card-link">
-                Read Full Article →
+              <Link
+                href="/article"
+                className="card-link"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                }}
+              >
+                <span>Read Full Article</span>
+                <ArrowRight size={14} />
               </Link>
             </div>
           </div>

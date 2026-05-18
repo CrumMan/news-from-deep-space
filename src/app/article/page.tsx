@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Globe2,
+  Newspaper,
+  Rocket,
+  Telescope,
+} from "lucide-react";
 
 interface Article {
   id: string;
@@ -163,11 +171,14 @@ export default function ArticlePage() {
           style={{
             color: "#bbbdf6",
             textDecoration: "none",
-            display: "inline-block",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.4rem",
             marginBottom: "1rem",
           }}
         >
-          ← Back to Home
+          <ArrowLeft size={16} />
+          <span>Back to Home</span>
         </Link>
 
         {/* Daily Badge */}
@@ -183,7 +194,7 @@ export default function ArticlePage() {
               fontWeight: "600",
             }}
           >
-            🌟 Featured Article of the Day - {new Date().toLocaleDateString()}
+            Featured Article of the Day · {new Date().toLocaleDateString()}
           </span>
         </div>
 
@@ -200,14 +211,21 @@ export default function ArticlePage() {
             justifyContent: "center",
           }}
         >
-          <div style={{ textAlign: "center", color: "white" }}>
-            <div style={{ fontSize: "64px", marginBottom: "10px" }}>📰</div>
+          <div
+            style={{
+              textAlign: "center",
+              color: "white",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            <Newspaper size={56} strokeWidth={1.5} color="#ffffff" />
             <div style={{ fontSize: "14px", color: "#bbbdf6" }}>
               Daily Space Feature
             </div>
-            <div style={{ fontSize: "12px", marginTop: "5px", opacity: 0.7 }}>
-              Article Image
-            </div>
+            <div style={{ fontSize: "12px", opacity: 0.7 }}>Article Image</div>
           </div>
         </div>
 
@@ -323,10 +341,16 @@ export default function ArticlePage() {
                       justifyContent: "center",
                     }}
                   >
-                    <div style={{ fontSize: "48px" }}>
-                      {relatedArticle.id === "2" && "🔭"}
-                      {relatedArticle.id === "3" && "🚀"}
-                      {relatedArticle.id === "4" && "🪐"}
+                    <div style={{ color: "#ffffff" }}>
+                      {relatedArticle.id === "2" && (
+                        <Telescope size={48} strokeWidth={1.5} />
+                      )}
+                      {relatedArticle.id === "3" && (
+                        <Rocket size={48} strokeWidth={1.5} />
+                      )}
+                      {relatedArticle.id === "4" && (
+                        <Globe2 size={48} strokeWidth={1.5} />
+                      )}
                     </div>
                   </div>
 
@@ -355,12 +379,22 @@ export default function ArticlePage() {
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
+                      alignItems: "center",
                       fontSize: "0.7rem",
                       color: "#9ca3af",
                     }}
                   >
                     <span>{relatedArticle.news_site}</span>
-                    <span>Read More →</span>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.25rem",
+                      }}
+                    >
+                      Read More
+                      <ArrowRight size={12} />
+                    </span>
                   </div>
                 </div>
               </Link>

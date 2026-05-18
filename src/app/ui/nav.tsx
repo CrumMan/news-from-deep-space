@@ -1,8 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  Home,
+  Info,
+  LogIn,
+  LogOut,
+  Menu,
+  Newspaper,
+  User,
+  UserPlus,
+  X,
+} from "lucide-react";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -33,20 +44,33 @@ export default function Navbar() {
     window.location.href = "/";
   };
 
-  const navLinks = [
-    { name: "Home", href: "/", icon: "🏠" },
-    { name: "Articles", href: "/article", icon: "📰" },
-    { name: "About Us", href: "/about", icon: "ℹ️" },
+  const iconSize = 16;
+  type NavItem = {
+    name: string;
+    href: string;
+    icon: ReactNode;
+    onClick?: () => void;
+  };
+
+  const navLinks: NavItem[] = [
+    { name: "Home", href: "/", icon: <Home size={iconSize} /> },
+    { name: "Articles", href: "/article", icon: <Newspaper size={iconSize} /> },
+    { name: "About Us", href: "/about", icon: <Info size={iconSize} /> },
   ];
 
-  const authLinks = isLoggedIn
+  const authLinks: NavItem[] = isLoggedIn
     ? [
-        { name: "Account", href: "/account", icon: "👤" },
-        { name: "Logout", href: "#", onClick: handleLogout, icon: "🚪" },
+        { name: "Account", href: "/account", icon: <User size={iconSize} /> },
+        {
+          name: "Logout",
+          href: "#",
+          onClick: handleLogout,
+          icon: <LogOut size={iconSize} />,
+        },
       ]
     : [
-        { name: "Login", href: "/login", icon: "🔐" },
-        { name: "Sign Up", href: "/signup", icon: "✍️" },
+        { name: "Login", href: "/login", icon: <LogIn size={iconSize} /> },
+        { name: "Sign Up", href: "/signup", icon: <UserPlus size={iconSize} /> },
       ];
 
   const isActive = (path: string) => {
@@ -196,17 +220,20 @@ export default function Navbar() {
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
             style={{
               display: "none",
               background: "none",
               border: "none",
               color: "white",
-              fontSize: "1.5rem",
               cursor: "pointer",
+              padding: "6px",
+              alignItems: "center",
+              justifyContent: "center",
             }}
             className="mobile-menu-btn"
           >
-            {isMobileMenuOpen ? "✕" : "☰"}
+            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
 

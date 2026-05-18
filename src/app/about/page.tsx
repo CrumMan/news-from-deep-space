@@ -1,6 +1,20 @@
 "use client";
 
+import { ReactNode } from "react";
 import Link from "next/link";
+import {
+  Bot,
+  Check,
+  Code2,
+  Globe2,
+  Microscope,
+  Newspaper,
+  Rocket,
+  Sparkles,
+  Star,
+  Telescope,
+  User,
+} from "lucide-react";
 
 export default function AboutPage() {
   return (
@@ -39,15 +53,9 @@ export default function AboutPage() {
         </div>
 
         <div style={{ marginBottom: "2rem" }}>
-          <h2
-            style={{
-              color: "#bbbdf6",
-              marginBottom: "1rem",
-              fontSize: "1.5rem",
-            }}
-          >
-            🚀 Our Mission
-          </h2>
+          <SectionHeading icon={<Rocket size={22} />}>
+            Our Mission
+          </SectionHeading>
           <p
             style={{
               color: "#d1d5db",
@@ -70,15 +78,9 @@ export default function AboutPage() {
         </div>
 
         <div style={{ marginBottom: "2rem" }}>
-          <h2
-            style={{
-              color: "#bbbdf6",
-              marginBottom: "1rem",
-              fontSize: "1.5rem",
-            }}
-          >
-            🌟 What We Do
-          </h2>
+          <SectionHeading icon={<Star size={22} />}>
+            What We Do
+          </SectionHeading>
           <div
             style={{
               display: "grid",
@@ -94,7 +96,7 @@ export default function AboutPage() {
                 borderRadius: "8px",
               }}
             >
-              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>📰</div>
+              <TileIcon><Newspaper size={28} /></TileIcon>
               <h3
                 style={{
                   color: "#bbbdf6",
@@ -123,7 +125,7 @@ export default function AboutPage() {
                 borderRadius: "8px",
               }}
             >
-              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🪐</div>
+              <TileIcon><Globe2 size={28} /></TileIcon>
               <h3
                 style={{
                   color: "#bbbdf6",
@@ -152,7 +154,7 @@ export default function AboutPage() {
                 borderRadius: "8px",
               }}
             >
-              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🔭</div>
+              <TileIcon><Telescope size={28} /></TileIcon>
               <h3
                 style={{
                   color: "#bbbdf6",
@@ -181,7 +183,7 @@ export default function AboutPage() {
                 borderRadius: "8px",
               }}
             >
-              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🤖</div>
+              <TileIcon><Bot size={28} /></TileIcon>
               <h3
                 style={{
                   color: "#bbbdf6",
@@ -206,15 +208,9 @@ export default function AboutPage() {
         </div>
 
         <div style={{ marginBottom: "2rem" }}>
-          <h2
-            style={{
-              color: "#bbbdf6",
-              marginBottom: "1rem",
-              fontSize: "1.5rem",
-            }}
-          >
-            💫 Why Choose NFDS?
-          </h2>
+          <SectionHeading icon={<Sparkles size={22} />}>
+            Why Choose NFDS?
+          </SectionHeading>
           <div
             style={{
               display: "grid",
@@ -222,75 +218,29 @@ export default function AboutPage() {
               gap: "1rem",
             }}
           >
-            <div>
-              <p
-                style={{
-                  color: "#7a5980",
-                  fontWeight: "bold",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                ✓ Curated Content
-              </p>
-              <p style={{ color: "#d1d5db", fontSize: "0.875rem" }}>
-                Hand-picked articles and images
-              </p>
-            </div>
-            <div>
-              <p
-                style={{
-                  color: "#7a5980",
-                  fontWeight: "bold",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                ✓ Daily Updates
-              </p>
-              <p style={{ color: "#d1d5db", fontSize: "0.875rem" }}>
-                Fresh content delivered every day
-              </p>
-            </div>
-            <div>
-              <p
-                style={{
-                  color: "#7a5980",
-                  fontWeight: "bold",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                ✓ Free Access
-              </p>
-              <p style={{ color: "#d1d5db", fontSize: "0.875rem" }}>
-                No subscription or payment required
-              </p>
-            </div>
-            <div>
-              <p
-                style={{
-                  color: "#7a5980",
-                  fontWeight: "bold",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                ✓ User-Friendly
-              </p>
-              <p style={{ color: "#d1d5db", fontSize: "0.875rem" }}>
-                Simple and intuitive interface
-              </p>
-            </div>
+            <FeatureBullet
+              title="Curated Content"
+              description="Hand-picked articles and images"
+            />
+            <FeatureBullet
+              title="Daily Updates"
+              description="Fresh content delivered every day"
+            />
+            <FeatureBullet
+              title="Free Access"
+              description="No subscription or payment required"
+            />
+            <FeatureBullet
+              title="User-Friendly"
+              description="Simple and intuitive interface"
+            />
           </div>
         </div>
 
         <div style={{ marginBottom: "2rem" }}>
-          <h2
-            style={{
-              color: "#bbbdf6",
-              marginBottom: "1rem",
-              fontSize: "1.5rem",
-            }}
-          >
-            🌌 Our Vision
-          </h2>
+          <SectionHeading icon={<Telescope size={22} />}>
+            Our Vision
+          </SectionHeading>
           <p style={{ color: "#d1d5db", lineHeight: "1.6" }}>
             We envision a world where everyone has access to the latest space
             discoveries and can share in the excitement of humanity's expansion
@@ -329,42 +279,9 @@ export default function AboutPage() {
               justifyContent: "center",
             }}
           >
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "2rem" }}>👨‍🚀</div>
-              <p
-                style={{
-                  color: "#bbbdf6",
-                  fontWeight: "bold",
-                  marginTop: "0.5rem",
-                }}
-              >
-                Space Writers
-              </p>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "2rem" }}>💻</div>
-              <p
-                style={{
-                  color: "#bbbdf6",
-                  fontWeight: "bold",
-                  marginTop: "0.5rem",
-                }}
-              >
-                Developers
-              </p>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "2rem" }}>🔬</div>
-              <p
-                style={{
-                  color: "#bbbdf6",
-                  fontWeight: "bold",
-                  marginTop: "0.5rem",
-                }}
-              >
-                Science Advisors
-              </p>
-            </div>
+            <TeamRole icon={<User size={26} />} label="Space Writers" />
+            <TeamRole icon={<Code2 size={26} />} label="Developers" />
+            <TeamRole icon={<Microscope size={26} />} label="Science Advisors" />
           </div>
         </div>
 
@@ -401,6 +318,125 @@ export default function AboutPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SectionHeading({
+  icon,
+  children,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <h2
+      style={{
+        color: "#bbbdf6",
+        marginBottom: "1rem",
+        fontSize: "1.5rem",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.6rem",
+      }}
+    >
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "36px",
+          height: "36px",
+          borderRadius: "10px",
+          background: "rgba(187, 189, 246, 0.12)",
+          border: "1px solid rgba(187, 189, 246, 0.25)",
+          color: "#bbbdf6",
+        }}
+      >
+        {icon}
+      </span>
+      {children}
+    </h2>
+  );
+}
+
+function TileIcon({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        width: "44px",
+        height: "44px",
+        marginBottom: "0.75rem",
+        borderRadius: "10px",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(187, 189, 246, 0.12)",
+        border: "1px solid rgba(187, 189, 246, 0.25)",
+        color: "#bbbdf6",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function FeatureBullet({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div>
+      <p
+        style={{
+          color: "#bbbdf6",
+          fontWeight: 600,
+          marginBottom: "0.25rem",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "0.4rem",
+        }}
+      >
+        <Check size={16} color="#7a5980" strokeWidth={3} />
+        {title}
+      </p>
+      <p style={{ color: "#d1d5db", fontSize: "0.875rem" }}>{description}</p>
+    </div>
+  );
+}
+
+function TeamRole({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <div style={{ textAlign: "center" }}>
+      <div
+        style={{
+          width: "52px",
+          height: "52px",
+          margin: "0 auto",
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background:
+            "linear-gradient(135deg, rgba(187, 189, 246, 0.18) 0%, rgba(122, 89, 128, 0.18) 100%)",
+          border: "1px solid rgba(187, 189, 246, 0.25)",
+          color: "#bbbdf6",
+        }}
+      >
+        {icon}
+      </div>
+      <p
+        style={{
+          color: "#bbbdf6",
+          fontWeight: "bold",
+          marginTop: "0.5rem",
+        }}
+      >
+        {label}
+      </p>
     </div>
   );
 }
