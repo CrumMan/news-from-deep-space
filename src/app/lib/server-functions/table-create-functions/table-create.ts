@@ -4,7 +4,7 @@ import { error } from 'console';
 
 const sql = postgres(process.env.NETLIFY_DATABASE_URL!, {ssl: 'require'});
 
-async function seedKeywords(){
+async function seedKeyword(){
     await sql`
     CREATE TABLE IF EXISTS keyword(
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
