@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import postgres from 'postgres';
 import { error } from 'console';
 
-const sql = postgres(process.env.POSTGRES_URL!, {ssl: 'require'});
+const sql = postgres(process.env.NETLIFY_DATABASE_URL!, {ssl: 'require'});
 
 async function seedKeywords(){
     await sql`
@@ -46,6 +46,7 @@ async function seedAccount(){
     await sql `
     CREATE TABLE IF NOT EXISTS account(
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    email TEXT NOT NULL,
     username VARCHAR(40) NOT NULL,
     password TEXT NOT NULL,
     streak INT(4)
