@@ -1,21 +1,21 @@
-import bcrypt from 'bcryptjs';
-import postgres from 'postgres';
-import { error } from 'console';
+import bcrypt from "bcryptjs";
+import postgres from "postgres";
+import { error } from "console";
 
-const sql = postgres(process.env.NETLIFY_DATABASE_URL!, {ssl: 'require'});
+const sql = postgres(process.env.NETLIFY_DATABASE_URL!, { ssl: "require" });
 
-async function seedKeyword(){
-    await sql`
+async function seedKeyword() {
+  await sql`
     CREATE TABLE IF EXISTS keyword(
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     keyword VARCHAR(100) NOT NULL,
-    synonyms TEXT NOT NULL
+    synonyms TEXT[] DEFAULT '{}',
     );
-    `
+    `;
 }
 
-async function seedCombinedKeywords(){
-    await sql`
+async function seedCombinedKeywords() {
+  await sql`
     CREATE TABLE IF NOT EXISTS combined_keywords(
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     
@@ -39,11 +39,11 @@ async function seedCombinedKeywords(){
         REFERENCES keyword(id)
         ON DELETE CASCADE
     );    
-`
+`;
 }
 
-async function seedAccount(){
-    await sql `
+async function seedAccount() {
+  await sql`
     CREATE TABLE IF NOT EXISTS account(
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     email TEXT NOT NULL,
@@ -51,5 +51,5 @@ async function seedAccount(){
     password TEXT NOT NULL,
     streak INT(4)
     );
-    `
+    `;
 }
