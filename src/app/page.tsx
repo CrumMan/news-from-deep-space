@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
+import { useStreakIncrement } from "./components/use-streak";
 
 const PLACEHOLDER_PHOTO = {
   title: "The Majestic Andromeda Galaxy",
@@ -28,6 +29,7 @@ const PLACEHOLDER_ARTICLE = {
 export default function HomePage() {
   const [dailyPhoto, setDailyPhoto] = useState(PLACEHOLDER_PHOTO);
   const [dailyArticle, setDailyArticle] = useState(PLACEHOLDER_ARTICLE);
+  useStreakIncrement();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {

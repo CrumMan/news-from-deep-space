@@ -4,16 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { clearSession } from "../admin/bot-config";
 
 export default function LogoutPage() {
   const router = useRouter();
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userEmail");
-
-    window.dispatchEvent(new Event("authChange"));
+    clearSession();
 
     const timer = setInterval(() => {
       setCountdown((prev) => {

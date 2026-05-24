@@ -1,43 +1,62 @@
 "use client";
 
-import { KeyboardEvent, useState } from "react";
-import { X } from "lucide-react";
-import { BotLink, Combination, newId } from "./bot-config";
+import { useMemo, useState } from "react";
+import {
+  Combination,
+  CombinationType,
+  Keyword,
+  createCombination,
+  deleteCombination,
+  fetchCombinations,
+  updateCombination,
+} from "./bot-config";
 import Modal from "./modal";
-import LinkListEditor from "./link-list-editor";
 
 type CombinationPanelProps = {
   combinations: Combination[];
+  keywords: Keyword[];
   onChange: (combinations: Combination[]) => void;
-  onNotify: (message: string) => void;
+  onNotify: (message: string, tone?: "success" | "error") => void;
+  readOnly?: boolean;
 };
 
-type DraftCombination = {
+type Draft = {
   id: string | null;
-  words: string[];
-  pendingWord: string;
-  response: string;
-  links: BotLink[];
+  keywordId1: string;
+  keywordId2: string;
+  type: CombinationType;
+  result: string;
+  apiKey: string;
 };
 
-const emptyDraft: DraftCombination = {
+const emptyDraft: Draft = {
   id: null,
-  words: [],
-  pendingWord: "",
-  response: "",
-  links: [],
+  keywordId1: "",
+  keywordId2: "",
+  type: "link",
+  result: "",
+  apiKey: "",
 };
 
 export default function CombinationPanel({
   combinations,
+  keywords,
   onChange,
   onNotify,
+  readOnly = false,
 }: CombinationPanelProps) {
-  const [draft, setDraft] = useState<DraftCombination>(emptyDraft);
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const sortedKeywords = useMemo(
+    () => [...keywords].sort((a, b) => a.keyword.localeCompare(b.keyword)),
+    [keywords],
+  );
 
   const openCreate = () => {
+    if (readOnly) return;
     setDraft(emptyDraft);
     setFormError("");
     setIsModalOpen(true);
@@ -46,10 +65,11 @@ export default function CombinationPanel({
   const openEdit = (combination: Combination) => {
     setDraft({
       id: combination.id,
-      words: [...combination.words],
-      pendingWord: "",
-      response: combination.response,
-      links: combination.links.map((link) => ({ ...link })),
+      keywordId1: combination.fk_keyword1,
+      keywordId2: combination.fk_keyword2,
+      type: combination.type,
+      result: combination.result,
+      apiKey: combination.api_key ?? "",
     });
     setFormError("");
     setIsModalOpen(true);
@@ -61,156 +81,80 @@ export default function CombinationPanel({
     setFormError("");
   };
 
-  const commitPendingWord = () => {
-    const word = draft.pendingWord.trim().toLowerCase();
-    if (!word) return;
-    if (word.includes(" ")) {
-      setFormError("Each word must be a single token.");
-      return;
-    }
-    if (draft.words.includes(word)) {
-      setDraft({ ...draft, pendingWord: "" });
-      return;
-    }
-    setDraft({
-      ...draft,
-      words: [...draft.words, word],
-      pendingWord: "",
-    });
-    setFormError("");
-  };
-
-  const removeWord = (index: number) => {
-    setDraft({
-      ...draft,
-      words: draft.words.filter((_, i) => i !== index),
-    });
-  };
-
-  const handleWordKey = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      commitPendingWord();
-    } else if (
-      event.key === "Backspace" &&
-      !draft.pendingWord &&
-      draft.words.length > 0
-    ) {
-      removeWord(draft.words.length - 1);
-    }
-  };
-
-  const handleDelete = (id: string) => {
-    const target = combinations.find((item) => item.id === id);
-    if (!target) return;
+  const handleDelete = async (combination: Combination) => {
+    const label = `${combination.keyword1} + ${combination.keyword2}`;
     const confirmed = window.confirm(
-      `Delete the combination "${target.words.join(" + ")}"? This cannot be undone.`,
+      `Delete the combination "${label}"? This cannot be undone.`,
     );
     if (!confirmed) return;
-    onChange(combinations.filter((item) => item.id !== id));
-    onNotify(`Removed combination "${target.words.join(" + ")}".`);
+    try {
+      await deleteCombination(combination.id);
+      onChange(combinations.filter((c) => c.id !== combination.id));
+      onNotify(`Removed combination "${label}".`);
+    } catch (error) {
+      onNotify(
+        error instanceof Error ? error.message : "Failed to delete combination",
+        "error",
+      );
+    }
   };
 
-  const handleSave = () => {
-    const trimmedResponse = draft.response.trim();
-    let words = [...draft.words];
-
-    const pending = draft.pendingWord.trim().toLowerCase();
-    if (pending && !words.includes(pending)) {
-      words.push(pending);
-    }
-
-    if (words.length < 2) {
-      setFormError("Combinations need at least two words.");
+  const handleSave = async () => {
+    if (!draft.keywordId1 || !draft.keywordId2) {
+      setFormError("Pick two keywords.");
       return;
     }
-    if (!trimmedResponse) {
-      setFormError("Bot response is required.");
+    if (draft.keywordId1 === draft.keywordId2) {
+      setFormError("Pick two different keywords.");
+      return;
+    }
+    if (!draft.result.trim()) {
+      setFormError("Add a link or API URL.");
       return;
     }
 
-    const fingerprint = [...words].sort().join("|");
-    const duplicate = combinations.some((item) => {
-      if (item.id === draft.id) return false;
-      const otherFingerprint = [...item.words].sort().join("|");
-      return otherFingerprint === fingerprint;
-    });
-    if (duplicate) {
-      setFormError("Another entry already uses this word combination.");
-      return;
-    }
-
-    const cleanedLinks = draft.links
-      .map((link) => ({ text: link.text.trim(), url: link.url.trim() }))
-      .filter((link) => link.text && link.url);
-
-    if (draft.id) {
-      onChange(
-        combinations.map((item) =>
-          item.id === draft.id
-            ? {
-                ...item,
-                words,
-                response: trimmedResponse,
-                links: cleanedLinks,
-              }
-            : item,
-        ),
+    setSaving(true);
+    try {
+      if (draft.id) {
+        await updateCombination(draft.id, {
+          type: draft.type,
+          result: draft.result.trim(),
+          apiKey: draft.type === "api" ? draft.apiKey.trim() || null : null,
+        });
+      } else {
+        await createCombination({
+          keywordId1: draft.keywordId1,
+          keywordId2: draft.keywordId2,
+          type: draft.type,
+          result: draft.result.trim(),
+          apiKey: draft.type === "api" ? draft.apiKey.trim() || null : null,
+        });
+      }
+      const refreshed = await fetchCombinations();
+      onChange(refreshed);
+      onNotify(draft.id ? "Combination updated." : "Combination created.");
+      closeModal();
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Failed to save combination",
       );
-      onNotify(`Updated combination "${words.join(" + ")}".`);
-    } else {
-      const created: Combination = {
-        id: newId("c"),
-        words,
-        response: trimmedResponse,
-        links: cleanedLinks,
-      };
-      onChange([...combinations, created]);
-      onNotify(`Added combination "${words.join(" + ")}".`);
+    } finally {
+      setSaving(false);
     }
-
-    closeModal();
   };
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "1.25rem",
-          flexWrap: "wrap",
-          gap: "1rem",
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "1.25rem",
-              fontWeight: 600,
-              color: "#ffffff",
-            }}
-          >
-            Word Combinations
-          </h2>
-          <p
-            style={{
-              margin: "0.25rem 0 0",
-              color: "#a0a0b0",
-              fontSize: "0.875rem",
-            }}
-          >
-            The bot replies when every word in the set appears in the message.
-          </p>
-        </div>
-        <button onClick={openCreate} className="button-primary">
-          + Add Combination
-        </button>
-      </div>
+      <PanelHeader
+        title="Word Combinations"
+        description="Pair two keywords to trigger a link or live API lookup when both appear in a user's message."
+        onCreate={openCreate}
+        disabled={keywords.length < 2 || readOnly}
+      />
 
-      {combinations.length === 0 ? (
+      {keywords.length < 2 ? (
+        <Hint message="Add at least two keywords first, then you can pair them into combinations." />
+      ) : combinations.length === 0 ? (
         <EmptyState onCreate={openCreate} />
       ) : (
         <div
@@ -225,7 +169,8 @@ export default function CombinationPanel({
               key={combination.id}
               combination={combination}
               onEdit={() => openEdit(combination)}
-              onDelete={() => handleDelete(combination.id)}
+              onDelete={() => handleDelete(combination)}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -233,7 +178,7 @@ export default function CombinationPanel({
 
       <Modal
         open={isModalOpen}
-        title={draft.id ? "Edit Word Combination" : "Add Word Combination"}
+        title={draft.id ? "Edit Combination" : "Add Combination"}
         onClose={closeModal}
         footer={
           <>
@@ -241,6 +186,7 @@ export default function CombinationPanel({
               type="button"
               onClick={closeModal}
               style={secondaryButtonStyle}
+              disabled={saving}
             >
               Cancel
             </button>
@@ -248,8 +194,13 @@ export default function CombinationPanel({
               type="button"
               onClick={handleSave}
               className="button-primary"
+              disabled={saving}
             >
-              {draft.id ? "Save Changes" : "Add Combination"}
+              {saving
+                ? "Saving…"
+                : draft.id
+                  ? "Save Changes"
+                  : "Add Combination"}
             </button>
           </>
         }
@@ -257,79 +208,90 @@ export default function CombinationPanel({
         <div
           style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}
         >
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">Words (all must match)</label>
-            <div
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <div className="form-group" style={{ flex: 1, margin: 0 }}>
+              <label className="form-label">First Keyword</label>
+              <select
+                value={draft.keywordId1}
+                onChange={(e) =>
+                  setDraft({ ...draft, keywordId1: e.target.value })
+                }
+                className="form-input"
+                disabled={!!draft.id}
+              >
+                <option value="">Select a keyword…</option>
+                {sortedKeywords.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.keyword}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ flex: 1, margin: 0 }}>
+              <label className="form-label">Second Keyword</label>
+              <select
+                value={draft.keywordId2}
+                onChange={(e) =>
+                  setDraft({ ...draft, keywordId2: e.target.value })
+                }
+                className="form-input"
+                disabled={!!draft.id}
+              >
+                <option value="">Select a keyword…</option>
+                {sortedKeywords.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.keyword}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {draft.id && (
+            <p
               style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "0.4rem",
-                alignItems: "center",
-                padding: "8px",
-                background: "rgba(59, 59, 88, 0.7)",
-                border: "1px solid #7a5980",
-                borderRadius: "8px",
+                color: "#9ca3af",
+                fontSize: "0.75rem",
+                margin: 0,
               }}
             >
-              {draft.words.map((word, index) => (
-                <span
-                  key={`${word}-${index}`}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.4rem",
-                    background: "#7a5980",
-                    color: "#ffffff",
-                    padding: "4px 10px",
-                    borderRadius: "999px",
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  {word}
+              Keywords cannot be changed after a combination is created. Delete
+              and re-add to swap keywords.
+            </p>
+          )}
+
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Type</label>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              {(["link", "api"] as const).map((type) => {
+                const active = draft.type === type;
+                return (
                   <button
+                    key={type}
                     type="button"
-                    onClick={() => removeWord(index)}
-                    aria-label={`Remove ${word}`}
+                    onClick={() => setDraft({ ...draft, type })}
                     style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "#ffffff",
+                      flex: 1,
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: active
+                        ? "1px solid #bbbdf6"
+                        : "1px solid rgba(187, 189, 246, 0.25)",
+                      background: active
+                        ? "rgba(187, 189, 246, 0.18)"
+                        : "transparent",
+                      color: active ? "#ffffff" : "#d1d5db",
                       cursor: "pointer",
-                      padding: 0,
-                      lineHeight: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
+                      fontFamily: "inherit",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
                     }}
                   >
-                    <X size={14} />
+                    {type}
                   </button>
-                </span>
-              ))}
-              <input
-                type="text"
-                value={draft.pendingWord}
-                onChange={(e) =>
-                  setDraft({ ...draft, pendingWord: e.target.value })
-                }
-                onKeyDown={handleWordKey}
-                onBlur={commitPendingWord}
-                placeholder={
-                  draft.words.length === 0
-                    ? "Type a word and press Enter"
-                    : "Add another word"
-                }
-                style={{
-                  flex: 1,
-                  minWidth: "140px",
-                  border: "none",
-                  background: "transparent",
-                  color: "#ffffff",
-                  outline: "none",
-                  fontFamily: "inherit",
-                  fontSize: "0.875rem",
-                  padding: "4px",
-                }}
-              />
+                );
+              })}
             </div>
             <p
               style={{
@@ -338,28 +300,41 @@ export default function CombinationPanel({
                 marginTop: "0.35rem",
               }}
             >
-              Press Enter or comma to add. Order does not matter.
+              {draft.type === "api"
+                ? "API combos call a remote endpoint and show the link to the user."
+                : "Link combos send the user directly to a fixed URL."}
             </p>
           </div>
 
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">Bot Response</label>
-            <textarea
-              value={draft.response}
-              onChange={(e) =>
-                setDraft({ ...draft, response: e.target.value })
-              }
-              placeholder="What should the bot say when all of these words appear?"
-              rows={3}
+            <label className="form-label">
+              {draft.type === "api" ? "API URL" : "Link URL"}
+            </label>
+            <input
+              type="text"
+              value={draft.result}
+              onChange={(e) => setDraft({ ...draft, result: e.target.value })}
               className="form-input"
-              style={{ resize: "vertical" }}
+              placeholder={
+                draft.type === "api"
+                  ? "https://api.nasa.gov/..."
+                  : "https://example.com/info"
+              }
             />
           </div>
 
-          <LinkListEditor
-            links={draft.links}
-            onChange={(links) => setDraft({ ...draft, links })}
-          />
+          {draft.type === "api" && (
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">API Key (optional)</label>
+              <input
+                type="text"
+                value={draft.apiKey}
+                onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
+                className="form-input"
+                placeholder="DEMO_KEY"
+              />
+            </div>
+          )}
 
           {formError && (
             <div className="error-message" style={{ marginBottom: 0 }}>
@@ -372,27 +347,75 @@ export default function CombinationPanel({
   );
 }
 
-function CombinationCard({
-  combination,
-  onEdit,
-  onDelete,
+function PanelHeader({
+  title,
+  description,
+  onCreate,
+  disabled,
 }: {
-  combination: Combination;
-  onEdit: () => void;
-  onDelete: () => void;
+  title: string;
+  description: string;
+  onCreate: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div
       style={{
-        background: "rgba(59, 59, 88, 0.7)",
-        border: "1px solid rgba(187, 189, 246, 0.15)",
-        borderRadius: "12px",
-        padding: "1.25rem",
         display: "flex",
-        flexDirection: "column",
-        gap: "0.75rem",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "1.25rem",
+        flexWrap: "wrap",
+        gap: "1rem",
       }}
     >
+      <div>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "1.25rem",
+            fontWeight: 600,
+            color: "#ffffff",
+          }}
+        >
+          {title}
+        </h2>
+        <p
+          style={{
+            margin: "0.25rem 0 0",
+            color: "#a0a0b0",
+            fontSize: "0.875rem",
+            maxWidth: "640px",
+          }}
+        >
+          {description}
+        </p>
+      </div>
+      <button
+        onClick={onCreate}
+        className="button-primary"
+        disabled={disabled}
+        style={disabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+      >
+        + Add Combination
+      </button>
+    </div>
+  );
+}
+
+function CombinationCard({
+  combination,
+  onEdit,
+  onDelete,
+  readOnly,
+}: {
+  combination: Combination;
+  onEdit: () => void;
+  onDelete: () => void;
+  readOnly?: boolean;
+}) {
+  return (
+    <div style={cardStyle}>
       <div
         style={{
           display: "flex",
@@ -401,71 +424,69 @@ function CombinationCard({
           gap: "0.75rem",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.35rem",
-          }}
-        >
-          {combination.words.map((word) => (
-            <span
-              key={word}
-              className="badge"
-              style={{ fontFamily: "monospace" }}
-            >
-              {word}
-            </span>
-          ))}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+          <span className="badge" style={{ fontFamily: "monospace" }}>
+            {combination.keyword1}
+          </span>
+          <span style={{ color: "#9ca3af", alignSelf: "center" }}>+</span>
+          <span className="badge" style={{ fontFamily: "monospace" }}>
+            {combination.keyword2}
+          </span>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
-          <button type="button" onClick={onEdit} style={iconButtonStyle}>
-            Edit
-          </button>
-          <button type="button" onClick={onDelete} style={dangerButtonStyle}>
-            Delete
-          </button>
-        </div>
+        {!readOnly && (
+          <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
+            <button type="button" onClick={onEdit} style={iconButtonStyle}>
+              Edit
+            </button>
+            <button type="button" onClick={onDelete} style={dangerButtonStyle}>
+              Delete
+            </button>
+          </div>
+        )}
       </div>
 
-      <p
-        style={{
-          margin: 0,
-          color: "#e0e0e0",
-          fontSize: "0.9rem",
-          lineHeight: 1.5,
-        }}
-      >
-        {combination.response}
-      </p>
-
-      {combination.links.length > 0 && (
-        <div
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <span
           style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.4rem",
-            marginTop: "0.25rem",
+            ...typePillStyle,
+            background:
+              combination.type === "api"
+                ? "rgba(187, 189, 246, 0.18)"
+                : "rgba(122, 89, 128, 0.3)",
+            color: combination.type === "api" ? "#bbbdf6" : "#f5b7e3",
           }}
         >
-          {combination.links.map((link, index) => (
-            <span
-              key={index}
-              style={{
-                fontSize: "0.75rem",
-                background: "rgba(187, 189, 246, 0.12)",
-                color: "#bbbdf6",
-                padding: "3px 10px",
-                borderRadius: "999px",
-                border: "1px solid rgba(187, 189, 246, 0.25)",
-              }}
-              title={link.url}
-            >
-              {link.text}
-            </span>
-          ))}
-        </div>
-      )}
+          {combination.type.toUpperCase()}
+        </span>
+        <span
+          style={{
+            color: "#d1d5db",
+            fontSize: "0.8rem",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={combination.result}
+        >
+          {combination.result}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Hint({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        border: "1px dashed rgba(187, 189, 246, 0.3)",
+        borderRadius: "12px",
+        padding: "2rem 1.5rem",
+        textAlign: "center",
+        color: "#a0a0b0",
+      }}
+    >
+      <p style={{ margin: 0 }}>{message}</p>
     </div>
   );
 }
@@ -482,7 +503,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       }}
     >
       <p style={{ margin: "0 0 1rem", fontSize: "1rem" }}>
-        No word combinations configured yet.
+        No combinations configured yet.
       </p>
       <button onClick={onCreate} className="button-primary">
         Add your first combination
@@ -490,6 +511,16 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
     </div>
   );
 }
+
+const cardStyle: React.CSSProperties = {
+  background: "rgba(59, 59, 88, 0.7)",
+  border: "1px solid rgba(187, 189, 246, 0.15)",
+  borderRadius: "12px",
+  padding: "1.25rem",
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.75rem",
+};
 
 const iconButtonStyle: React.CSSProperties = {
   background: "transparent",
@@ -522,4 +553,12 @@ const secondaryButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   fontFamily: "inherit",
   fontWeight: 500,
+};
+
+const typePillStyle: React.CSSProperties = {
+  fontSize: "0.7rem",
+  padding: "2px 8px",
+  borderRadius: "999px",
+  letterSpacing: "0.05em",
+  fontWeight: 600,
 };

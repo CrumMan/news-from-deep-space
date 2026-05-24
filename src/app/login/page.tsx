@@ -4,48 +4,46 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { apiFetch, Account, saveSession } from "../admin/bot-config";
+
+type LoginResponse = {
+  token: string;
+  account: Account;
+};
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
-      setError("Please enter both email and password");
+    if (!username.trim() || !password) {
+      setError("Please enter your username and password");
       return;
     }
-
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
 
     setIsLoading(true);
-
-    setTimeout(() => {
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userEmail", email);
-
-      window.dispatchEvent(new Event("authChange"));
-
+    try {
+      const data = await apiFetch<LoginResponse>("/api/auth/login", {
+        method: "POST",
+        body: { username: username.trim(), password },
+      });
+      saveSession(data.token, data.account);
       router.push("/");
-    }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -68,16 +66,17 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
+            <label htmlFor="username" className="form-label">
+              Username
             </label>
             <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="form-input"
-              placeholder="enter@email.com"
+              placeholder="your-handle"
+              autoComplete="username"
               disabled={isLoading}
             />
           </div>
@@ -93,6 +92,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="form-input"
               placeholder="••••••••"
+              autoComplete="current-password"
               disabled={isLoading}
             />
             <p
@@ -145,9 +145,11 @@ export default function LoginPage() {
               color: "#9ca3af",
             }}
           >
-            <p>Demo credentials (any valid email + password works)</p>
-            <p style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
-              Email: demo@example.com | Password: demo123
+            <p>
+              New here?{" "}
+              <Link href="/signup" style={{ color: "#bbbdf6" }}>
+                Create an account
+              </Link>
             </p>
           </div>
         </form>
