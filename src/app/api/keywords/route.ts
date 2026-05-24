@@ -5,6 +5,7 @@ import {
   requireAdmin,
   serverError,
 } from "../../lib/api-helpers";
+import { createKeywordWithSynonyms } from "../../lib/server-functions/keyword-create";
 
 export const dynamic = "force-dynamic";
 
@@ -53,23 +54,11 @@ export async function POST(request: Request) {
   if (!keyword) return badRequest("Keyword is required");
   if (keyword.length > 100) return badRequest("Keyword too long (max 100)");
 
-  try {
-    const existing = await sql`SELECT id FROM keyword WHERE keyword = ${keyword}`;
-    if (existing.length > 0) {
-      return NextResponse.json(
-        { error: "Keyword already exists" },
-        { status: 409 },
-      );
-    }
-
-    const rows = await sql<KeywordRow[]>`
-      INSERT INTO keyword (keyword, synonyms)
-      VALUES (${keyword}, ${synonyms})
-      RETURNING id, keyword, synonyms, created_at
-    `;
-    return NextResponse.json(rows[0], { status: 201 });
-  } catch (error) {
-    console.error("Keyword create failed", error);
-    return serverError();
+  const result = await createKeywordWithSynonyms(keyword, synonyms);
+  if (!result.success) {
+    const status = result.error.includes("already exists") ? 409 : 400;
+    return NextResponse.json({ error: result.error }, { status });
   }
+
+  return NextResponse.json(result.data, { status: 201 });
 }

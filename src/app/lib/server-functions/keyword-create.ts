@@ -1,44 +1,53 @@
 import { sql } from "./database";
 
+type KeywordRow = {
+  id: string;
+  keyword: string;
+  synonyms: string[];
+  created_at: string;
+};
+
 export async function createKeywordWithSynonyms(
   keyword: string,
   synonyms: string[],
 ) {
   try {
-    // Check if keyword already exists
+    const normalized = keyword.trim();
+    if (!normalized) {
+      return { success: false as const, error: "Keyword is required" };
+    }
+
     const existingKeyword = await sql`
-      SELECT id FROM keyword WHERE keyword = ${keyword.toLowerCase()}
+      SELECT id FROM keyword WHERE keyword = ${normalized}
     `;
 
     if (existingKeyword.length > 0) {
       return {
-        success: false,
-        error: `Keyword "${keyword}" already exists`,
+        success: false as const,
+        error: `Keyword "${normalized}" already exists`,
       };
     }
 
-    // Remove duplicates and convert to lowercase
-    const uniqueSynonyms = [...new Set(synonyms.map((s) => s.toLowerCase()))];
+    const uniqueSynonyms = [
+      ...new Set(synonyms.map((s) => s.trim()).filter(Boolean)),
+    ];
 
-    // Insert new keyword with synonyms as array
-    const result = await sql`
-      INSERT INTO keyword (keyword, synonyms, created_at, updated_at) 
-      VALUES (${keyword.toLowerCase()}, ${uniqueSynonyms}, NOW(), NOW()) 
-      RETURNING id, keyword, synonyms, created_at, updated_at
+    const result = await sql<KeywordRow[]>`
+      INSERT INTO keyword (keyword, synonyms)
+      VALUES (${normalized}, ${uniqueSynonyms})
+      RETURNING id, keyword, synonyms, created_at
     `;
 
-    console.log("Saved to DB:", result[0]); // Verify saved data
-
     return {
-      success: true,
-      message: `Keyword "${keyword}" created successfully with ${uniqueSynonyms.length} synonyms`,
+      success: true as const,
+      message: `Keyword "${normalized}" created successfully`,
       data: result[0],
     };
   } catch (error) {
     console.error("Error creating keyword:", error);
     return {
-      success: false,
-      error: error.message,
+      success: false as const,
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
