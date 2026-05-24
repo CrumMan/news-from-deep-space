@@ -1,16 +1,16 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { MessageCircle, Puzzle, Type } from "lucide-react";
 import {
   Combination,
   Keyword,
-  loadCombinations,
+  fetchCombinations,
+  fetchKeywords,
+  getCurrentAccount,
   loadFallback,
-  loadKeywords,
-  saveCombinations,
   saveFallback,
-  saveKeywords,
 } from "./bot-config";
 import KeywordPanel from "./keyword-panel";
 import CombinationPanel from "./combination-panel";
@@ -24,43 +24,57 @@ const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
   { id: "fallback", label: "Fallback Message", icon: <MessageCircle size={16} /> },
 ];
 
+type ToastState = { message: string; tone: "success" | "error" } | null;
+
 export default function AdminPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("keywords");
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [combinations, setCombinations] = useState<Combination[]>([]);
   const [fallback, setFallback] = useState("");
   const [fallbackDraft, setFallbackDraft] = useState("");
   const [hydrated, setHydrated] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    setKeywords(loadKeywords());
-    setCombinations(loadCombinations());
+    const account = getCurrentAccount();
+    if (!account) {
+      router.replace("/login");
+      return;
+    }
+    setIsAdmin(account.isAdmin);
+
     const storedFallback = loadFallback();
     setFallback(storedFallback);
     setFallbackDraft(storedFallback);
-    setHydrated(true);
-  }, []);
 
-  const handleKeywordsChange = (next: Keyword[]) => {
-    setKeywords(next);
-    saveKeywords(next);
-  };
+    Promise.all([fetchKeywords(), fetchCombinations()])
+      .then(([k, c]) => {
+        setKeywords(k);
+        setCombinations(c);
+      })
+      .catch((err: Error) =>
+        setLoadError(err.message || "Failed to load configuration"),
+      )
+      .finally(() => setHydrated(true));
+  }, [router]);
 
-  const handleCombinationsChange = (next: Combination[]) => {
-    setCombinations(next);
-    saveCombinations(next);
-  };
+  const notify = (
+    message: string,
+    tone: "success" | "error" = "success",
+  ) => setToast({ message, tone });
 
   const handleSaveFallback = () => {
     const trimmed = fallbackDraft.trim();
     if (!trimmed) {
-      setToast("Fallback message cannot be empty.");
+      notify("Fallback message cannot be empty.", "error");
       return;
     }
     setFallback(trimmed);
     saveFallback(trimmed);
-    setToast("Fallback message updated.");
+    notify("Fallback message updated.");
   };
 
   return (
@@ -114,9 +128,8 @@ export default function AdminPage() {
               fontSize: "1rem",
             }}
           >
-            Configure the deterministic chat assistant. Customize the words
-            and word combinations the bot recognizes, and set the response it
-            falls back to when nothing matches.
+            Manage the keywords and keyword combinations the deterministic chat
+            assistant recognizes. Changes go live immediately.
           </p>
 
           <div
@@ -195,6 +208,39 @@ export default function AdminPage() {
         className="container"
         style={{ paddingTop: "2rem", paddingBottom: "3rem" }}
       >
+        {!isAdmin && hydrated && (
+          <div
+            style={{
+              padding: "1rem 1.25rem",
+              marginBottom: "1.25rem",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              borderRadius: "10px",
+              color: "#fecaca",
+              background: "rgba(239, 68, 68, 0.08)",
+              fontSize: "0.9rem",
+            }}
+          >
+            You are signed in but do not have admin permissions. You can view
+            but not modify configuration.
+          </div>
+        )}
+
+        {loadError && (
+          <div
+            style={{
+              padding: "1rem 1.25rem",
+              marginBottom: "1.25rem",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              borderRadius: "10px",
+              color: "#fecaca",
+              background: "rgba(239, 68, 68, 0.08)",
+              fontSize: "0.9rem",
+            }}
+          >
+            {loadError}
+          </div>
+        )}
+
         {!hydrated ? (
           <div
             style={{
@@ -210,16 +256,19 @@ export default function AdminPage() {
             {activeTab === "keywords" && (
               <KeywordPanel
                 keywords={keywords}
-                onChange={handleKeywordsChange}
-                onNotify={setToast}
+                onChange={setKeywords}
+                onNotify={notify}
+                readOnly={!isAdmin}
               />
             )}
 
             {activeTab === "combinations" && (
               <CombinationPanel
                 combinations={combinations}
-                onChange={handleCombinationsChange}
-                onNotify={setToast}
+                keywords={keywords}
+                onChange={setCombinations}
+                onNotify={notify}
+                readOnly={!isAdmin}
               />
             )}
 
@@ -250,8 +299,9 @@ export default function AdminPage() {
                     fontSize: "0.875rem",
                   }}
                 >
-                  Shown to the user when no keyword or combination matches
-                  the message.
+                  Shown when no keyword or combination matches the message.
+                  Stored locally so each admin can preview tweaks before
+                  publishing.
                 </p>
                 <div className="form-group">
                   <label className="form-label">Message</label>
@@ -295,8 +345,8 @@ export default function AdminPage() {
       </div>
 
       <Toast
-        message={toast}
-        tone="success"
+        message={toast?.message ?? null}
+        tone={toast?.tone ?? "success"}
         onDismiss={() => setToast(null)}
       />
     </>

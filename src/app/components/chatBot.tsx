@@ -4,16 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, MessageSquare, Rocket, Send, X } from "lucide-react";
 import {
-  BotLink,
   Combination,
-  COMBINATIONS_STORAGE_KEY,
-  FALLBACK_STORAGE_KEY,
   Keyword,
-  KEYWORDS_STORAGE_KEY,
-  loadCombinations,
+  fetchCombinations,
+  fetchKeywords,
   loadFallback,
-  loadKeywords,
 } from "../admin/bot-config";
+
+type BotLink = {
+  text: string;
+  url: string;
+};
 
 type Message = {
   id: number;
@@ -24,36 +25,50 @@ type Message = {
 
 const WELCOME_MESSAGE: Message = {
   id: 1,
-  text: "Hello! I'm your space assistant. Ask me about recent photos, articles, or specific topics like Mars and Jupiter.",
+  text: "Hello! I'm your space assistant. Mention two topics you want to combine — e.g. 'James Webb' and 'telescope' — and I'll find a link or live data for you.",
   isUser: false,
 };
 
-function tokenize(message: string): string[] {
-  return message.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function findCombinationMatch(
-  tokens: string[],
-  combinations: Combination[],
-): Combination | null {
-  const tokenSet = new Set(tokens);
-  const matches = combinations.filter((combination) =>
-    combination.words.every((word) => tokenSet.has(word.toLowerCase())),
-  );
-  if (matches.length === 0) return null;
-  return matches.sort((a, b) => b.words.length - a.words.length)[0];
+function keywordMatches(message: string, keyword: Keyword): boolean {
+  const lowered = message.toLowerCase();
+  const candidates = [keyword.keyword, ...keyword.synonyms];
+  return candidates.some((candidate) => {
+    const term = candidate.trim().toLowerCase();
+    if (!term) return false;
+    const pattern = new RegExp(`\\b${escapeRegex(term)}\\b`, "i");
+    return pattern.test(lowered);
+  });
 }
 
-function findKeywordMatch(
-  tokens: string[],
+function findMatches(
+  message: string,
   keywords: Keyword[],
-): Keyword | null {
-  const tokenSet = new Set(tokens);
-  return (
-    keywords.find((keyword) =>
-      tokenSet.has(keyword.keyword.toLowerCase()),
-    ) ?? null
-  );
+  combinations: Combination[],
+): { combination: Combination | null; matchedKeywords: Keyword[] } {
+  const matchedKeywords = keywords.filter((k) => keywordMatches(message, k));
+  const matchedIds = new Set(matchedKeywords.map((k) => k.id));
+  const combination =
+    combinations.find(
+      (combo) =>
+        matchedIds.has(combo.fk_keyword1) && matchedIds.has(combo.fk_keyword2),
+    ) ?? null;
+  return { combination, matchedKeywords };
+}
+
+function buildLinkForCombination(combination: Combination): BotLink {
+  const label = `${combination.keyword1} + ${combination.keyword2}`;
+  if (combination.type === "api") {
+    const separator = combination.result.includes("?") ? "&" : "?";
+    const url = combination.api_key
+      ? `${combination.result}${separator}api_key=${encodeURIComponent(combination.api_key)}`
+      : combination.result;
+    return { text: `Live data: ${label}`, url };
+  }
+  return { text: `Open ${label}`, url: combination.result };
 }
 
 export default function ChatBot() {
@@ -68,22 +83,33 @@ export default function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    keywordsRef.current = loadKeywords();
-    combinationsRef.current = loadCombinations();
     fallbackRef.current = loadFallback();
 
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === KEYWORDS_STORAGE_KEY) {
-        keywordsRef.current = loadKeywords();
-      } else if (event.key === COMBINATIONS_STORAGE_KEY) {
-        combinationsRef.current = loadCombinations();
-      } else if (event.key === FALLBACK_STORAGE_KEY) {
-        fallbackRef.current = loadFallback();
+    let cancelled = false;
+    const loadData = async () => {
+      try {
+        const [k, c] = await Promise.all([fetchKeywords(), fetchCombinations()]);
+        if (cancelled) return;
+        keywordsRef.current = k;
+        combinationsRef.current = c;
+      } catch {
+        // The chat still works with empty data; we'll just fall back.
       }
     };
+    loadData();
 
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    const refresh = () => {
+      fallbackRef.current = loadFallback();
+      loadData();
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -91,28 +117,42 @@ export default function ChatBot() {
   }, [messages, isLoading]);
 
   const buildResponse = (userMessage: string): Message => {
-    const tokens = tokenize(userMessage);
-
-    const combinationMatch = findCombinationMatch(
-      tokens,
+    const { combination, matchedKeywords } = findMatches(
+      userMessage,
+      keywordsRef.current,
       combinationsRef.current,
     );
-    if (combinationMatch) {
+
+    if (combination) {
+      const link = buildLinkForCombination(combination);
       return {
         id: Date.now(),
-        text: combinationMatch.response,
+        text:
+          combination.type === "api"
+            ? `Here's today's data for "${combination.keyword1}" and "${combination.keyword2}":`
+            : `Here's the resource for "${combination.keyword1}" and "${combination.keyword2}":`,
         isUser: false,
-        links: combinationMatch.links,
+        links: [link],
       };
     }
 
-    const keywordMatch = findKeywordMatch(tokens, keywordsRef.current);
-    if (keywordMatch) {
+    if (matchedKeywords.length === 1) {
+      const matched = matchedKeywords[0];
+      const partners = combinationsRef.current
+        .filter(
+          (c) =>
+            c.fk_keyword1 === matched.id || c.fk_keyword2 === matched.id,
+        )
+        .map((c) =>
+          c.fk_keyword1 === matched.id ? c.keyword2 : c.keyword1,
+        );
+      const suggestion = partners.length
+        ? ` Try pairing it with: ${partners.slice(0, 3).join(", ")}.`
+        : "";
       return {
         id: Date.now(),
-        text: keywordMatch.response,
+        text: `I recognize "${matched.keyword}", but I need a second topic to give you something useful.${suggestion}`,
         isUser: false,
-        links: keywordMatch.links,
       };
     }
 
@@ -288,24 +328,42 @@ export default function ChatBot() {
                         gap: "0.5rem",
                       }}
                     >
-                      {message.links.map((link, idx) => (
-                        <Link
-                          key={idx}
-                          href={link.url}
-                          style={{
-                            color: message.isUser ? "#bbbdf6" : "#9b73a3",
-                            textDecoration: "none",
-                            fontSize: "0.875rem",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "0.35rem",
-                          }}
-                          onClick={() => setIsOpen(false)}
-                        >
-                          <span>{link.text}</span>
-                          <ArrowRight size={14} />
-                        </Link>
-                      ))}
+                      {message.links.map((link, idx) => {
+                        const isExternal = /^https?:\/\//i.test(link.url);
+                        const linkStyle: React.CSSProperties = {
+                          color: message.isUser ? "#bbbdf6" : "#9b73a3",
+                          textDecoration: "none",
+                          fontSize: "0.875rem",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.35rem",
+                        };
+                        if (isExternal) {
+                          return (
+                            <a
+                              key={idx}
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={linkStyle}
+                            >
+                              <span>{link.text}</span>
+                              <ArrowRight size={14} />
+                            </a>
+                          );
+                        }
+                        return (
+                          <Link
+                            key={idx}
+                            href={link.url}
+                            style={linkStyle}
+                            onClick={() => setIsOpen(false)}
+                          >
+                            <span>{link.text}</span>
+                            <ArrowRight size={14} />
+                          </Link>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

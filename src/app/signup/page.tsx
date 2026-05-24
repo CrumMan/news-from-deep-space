@@ -3,44 +3,57 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch, Account, saveSession } from "../admin/bot-config";
+
+type CreateResponse = {
+  token: string;
+  account: Account;
+};
 
 export default function SignUpPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!email || !password || !confirmPassword) {
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername || !password || !confirmPassword) {
       setError("Please fill in all fields");
       return;
     }
-
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 40) {
+      setError("Username must be 3-40 characters");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
 
     setIsLoading(true);
-
-    setTimeout(() => {
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userEmail", email);
-
-      window.dispatchEvent(new Event("authChange"));
-
+    try {
+      const data = await apiFetch<CreateResponse>("/api/accounts", {
+        method: "POST",
+        body: { username: trimmedUsername, password },
+      });
+      saveSession(data.token, data.account);
       router.push("/");
-    }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create account");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -70,12 +83,13 @@ export default function SignUpPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Username</label>
             <input
-              type="email"
+              type="text"
               className="form-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
               required
               disabled={isLoading}
             />
@@ -88,6 +102,7 @@ export default function SignUpPage() {
               className="form-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
               required
               disabled={isLoading}
             />
@@ -100,6 +115,7 @@ export default function SignUpPage() {
               className="form-input"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
               required
               disabled={isLoading}
             />

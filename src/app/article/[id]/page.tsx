@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Globe2, Mountain, Rocket, Telescope } from "lucide-react";
+import { useStreakIncrement } from "../../components/use-streak";
 
 interface Article {
   id: string;
@@ -69,6 +70,7 @@ export default function ArticlePage() {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  useStreakIncrement();
 
   useEffect(() => {
     const fetchArticle = async () => {

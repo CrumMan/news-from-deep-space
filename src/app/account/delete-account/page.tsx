@@ -1,4 +1,48 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  apiFetch,
+  clearSession,
+  getCurrentAccount,
+} from "../../admin/bot-config";
+
 export default function DeleteAccountPage() {
+  const router = useRouter();
+  const [accountId, setAccountId] = useState<string | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const session = getCurrentAccount();
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+    setAccountId(session.id);
+  }, [router]);
+
+  const handleDelete = async () => {
+    if (!accountId) return;
+    if (confirmText !== "DELETE") {
+      setError("Type DELETE in capital letters to confirm.");
+      return;
+    }
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/accounts/${accountId}`, { method: "DELETE" });
+      clearSession();
+      router.push("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete account");
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <main
       style={{
@@ -17,18 +61,38 @@ export default function DeleteAccountPage() {
           padding: "40px",
           borderRadius: "20px",
           width: "100%",
-          maxWidth: "600px",
+          maxWidth: "560px",
           textAlign: "center",
           boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
         }}
       >
         <h1>Delete Account</h1>
-        <p style={{ marginTop: "20px", color: "#c7c7e6" }}>
-          Are you sure you want to delete your account? This action cannot be undone.
+        <p style={{ marginTop: "1rem", color: "#c7c7e6" }}>
+          This permanently removes your profile and streak. It cannot be undone.
         </p>
 
-        <div style={{ display: "flex", gap: "15px", marginTop: "30px" }}>
-          <a
+        <div
+          className="form-group"
+          style={{ textAlign: "left", marginTop: "2rem" }}
+        >
+          <label className="form-label">
+            Type <strong>DELETE</strong> to confirm
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            className="form-input"
+            disabled={isDeleting}
+          />
+        </div>
+
+        {error && (
+          <p style={{ color: "#fecaca", marginTop: "0.5rem" }}>{error}</p>
+        )}
+
+        <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
+          <Link
             href="/account"
             style={{
               flex: 1,
@@ -40,9 +104,11 @@ export default function DeleteAccountPage() {
             }}
           >
             Cancel
-          </a>
+          </Link>
 
           <button
+            onClick={handleDelete}
+            disabled={isDeleting}
             style={{
               flex: 1,
               padding: "14px",
@@ -50,10 +116,12 @@ export default function DeleteAccountPage() {
               border: "none",
               background: "#ff5f8a",
               color: "white",
-              cursor: "pointer",
+              cursor: isDeleting ? "not-allowed" : "pointer",
+              opacity: isDeleting ? 0.7 : 1,
+              fontWeight: 600,
             }}
           >
-            Confirm Delete
+            {isDeleting ? "Deleting…" : "Confirm Delete"}
           </button>
         </div>
       </div>

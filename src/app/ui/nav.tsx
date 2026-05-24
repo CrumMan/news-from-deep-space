@@ -10,37 +10,39 @@ import {
   LogOut,
   Menu,
   Newspaper,
+  Settings,
   User,
   UserPlus,
   X,
 } from "lucide-react";
+import { clearSession, getCurrentAccount } from "../admin/bot-config";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  useEffect(() => {
+  const syncAuth = () => {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedIn);
+    setIsAdmin(loggedIn && (getCurrentAccount()?.isAdmin ?? false));
+  };
 
-    const handleAuthChange = () => {
-      const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-      setIsLoggedIn(loggedIn);
-    };
+  useEffect(() => {
+    syncAuth();
 
-    window.addEventListener("authChange", handleAuthChange);
+    window.addEventListener("authChange", syncAuth);
 
     return () => {
-      window.removeEventListener("authChange", handleAuthChange);
+      window.removeEventListener("authChange", syncAuth);
     };
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userEmail");
+    clearSession();
     setIsLoggedIn(false);
-    window.dispatchEvent(new Event("authChange"));
+    setIsAdmin(false);
     window.location.href = "/";
   };
 
@@ -60,6 +62,15 @@ export default function Navbar() {
 
   const authLinks: NavItem[] = isLoggedIn
     ? [
+        ...(isAdmin
+          ? [
+              {
+                name: "Admin",
+                href: "/admin",
+                icon: <Settings size={iconSize} />,
+              },
+            ]
+          : []),
         { name: "Account", href: "/account", icon: <User size={iconSize} /> },
         {
           name: "Logout",
