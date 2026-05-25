@@ -10,4 +10,4 @@
 "I sought the Lord, and he heard me, and delivered me from all my fears"
 
 ## Sprint W04 Note - Nasibu Saidi
-Fixed project dependency issues and tested the frontend locally.
+Fixed project dependency issues and tested the frontend locally..
