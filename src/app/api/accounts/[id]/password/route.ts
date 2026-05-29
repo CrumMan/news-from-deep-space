@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { sql } from "../../../../lib/db";
-import { hashPassword, verifyPassword } from "../../../../lib/password";
 import {
   badRequest,
   getToken,
@@ -8,6 +6,7 @@ import {
   serverError,
   unauthorized,
 } from "../../../../lib/api-helpers";
+import { changeAccountPassword } from "../../../../lib/server-functions/account-change-password";
 
 export const dynamic = "force-dynamic";
 
@@ -30,31 +29,11 @@ export async function PUT(request: Request, { params }: Params) {
   const current = body.currentPassword ?? "";
   const next = body.newPassword ?? "";
 
-  if (next.length < 6) {
-    return badRequest("New password must be at least 6 characters");
+  const result = await changeAccountPassword(id, current, next);
+  if (!result.success) {
+    if (result.error === "Account not found") return notFound(result.error);
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  try {
-    const rows = await sql<{ password_hash: string }[]>`
-      SELECT password_hash FROM account WHERE id = ${id}
-    `;
-    if (rows.length === 0) return notFound("Account not found");
-
-    const matches = await verifyPassword(current, rows[0].password_hash);
-    if (!matches) {
-      return NextResponse.json(
-        { error: "Current password is incorrect" },
-        { status: 400 },
-      );
-    }
-
-    const nextHash = await hashPassword(next);
-    await sql`
-      UPDATE account SET password_hash = ${nextHash} WHERE id = ${id}
-    `;
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error("Password change failed", error);
-    return serverError();
-  }
+  return NextResponse.json({ ok: true });
 }

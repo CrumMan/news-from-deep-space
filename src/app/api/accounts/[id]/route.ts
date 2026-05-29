@@ -6,6 +6,7 @@ import {
   serverError,
   unauthorized,
 } from "../../../lib/api-helpers";
+import { deleteAccountById } from "../../../lib/server-functions/account-delete";
 
 export const dynamic = "force-dynamic";
 
@@ -52,10 +53,8 @@ export async function DELETE(request: Request, { params }: Params) {
   if (!user || user.accountId !== id) return unauthorized();
 
   try {
-    const rows = await sql`
-      DELETE FROM account WHERE id = ${id} RETURNING id
-    `;
-    if (rows.length === 0) return notFound("Account not found");
+    const result = await deleteAccountById(id);
+    if (!result.success) return notFound(result.error);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Account delete failed", error);
