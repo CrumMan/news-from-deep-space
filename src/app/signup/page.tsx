@@ -13,6 +13,7 @@ type CreateResponse = {
 export default function SignUpPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,6 +24,8 @@ export default function SignUpPage() {
     setError("");
 
     const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+    const emailRegex: RegExp = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     if (!trimmedUsername || !password || !confirmPassword) {
       setError("Please fill in all fields");
@@ -31,6 +34,10 @@ export default function SignUpPage() {
     if (trimmedUsername.length < 3 || trimmedUsername.length > 40) {
       setError("Username must be 3-40 characters");
       return;
+    }
+
+    if(!emailRegex.test(trimmedEmail)){
+      setError("Please enter an email")
     }
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -45,7 +52,7 @@ export default function SignUpPage() {
     try {
       const data = await apiFetch<CreateResponse>("/api/accounts", {
         method: "POST",
-        body: { username: trimmedUsername, password },
+        body: { username: trimmedUsername,email:trimmedEmail, password },
       });
       saveSession(data.token, data.account);
       router.push("/");
@@ -90,6 +97,19 @@ export default function SignUpPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
+              required
+              disabled={isLoading}
+            />
+          </div>
+            
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input
+              type="email"
+              className="form-input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
               disabled={isLoading}
             />

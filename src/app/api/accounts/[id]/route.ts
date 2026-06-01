@@ -15,6 +15,7 @@ type Params = { params: Promise<{ id: string }> };
 type AccountRow = {
   id: string;
   username: string;
+  email:string;
   streak: number;
   last_active: string | null;
   is_admin: boolean;
@@ -28,7 +29,7 @@ export async function GET(request: Request, { params }: Params) {
 
   try {
     const rows = await sql<AccountRow[]>`
-      SELECT id, username, streak, last_active, is_admin, created_at
+      SELECT id, username,email, streak, last_active, is_admin, created_at
       FROM account WHERE id = ${id}
     `;
     if (rows.length === 0) return notFound("Account not found");
@@ -36,6 +37,7 @@ export async function GET(request: Request, { params }: Params) {
     return NextResponse.json({
       id: account.id,
       username: account.username,
+      email:account.email,
       streak: account.streak,
       lastActive: account.last_active,
       isAdmin: account.is_admin,

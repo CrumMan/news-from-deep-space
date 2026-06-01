@@ -6,10 +6,10 @@ declare global {
 }
 
 function createClient() {
-  const connectionString = process.env.POSTGRES_NETLIFY_URL;
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error(
-      "POSTGRES_NETLIFY_URL is not set. Add it to .env.local or Netlify environment variables.",
+      "DATABASE_URL is not set. Add it to .env.local or Netlify environment variables.",
     );
   }
   return postgres(connectionString, { ssl: "require" });

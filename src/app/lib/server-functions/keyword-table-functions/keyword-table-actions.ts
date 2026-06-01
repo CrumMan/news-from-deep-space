@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import postgres from 'postgres';
 import { error } from 'console';
-const sql = postgres(process.env.POSTGRES_NETLIFY_URL!, {ssl: 'require'});
+const sql = postgres(process.env.DATABASE_URL!, {ssl: 'require'});
 
 async function getKeywordById(id: number) {
     try{

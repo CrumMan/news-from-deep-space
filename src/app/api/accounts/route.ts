@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 type CreateBody = {
   username?: string;
   password?: string;
+  email?:string;
 };
 
 export async function POST(request: Request) {
@@ -20,12 +21,13 @@ export async function POST(request: Request) {
 
   const username = body.username?.trim();
   const password = body.password ?? "";
+  const email = body.email?.trim();
 
   if (!username || !password) {
     return badRequest("Username and password are required");
   }
 
-  const result = await createAccount(username, password);
+  const result = await createAccount(username, password, email);
   if (!result.success) {
     const status = result.error === "Username already taken" ? 409 : 400;
     return NextResponse.json({ error: result.error }, { status });
