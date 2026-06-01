@@ -27,7 +27,7 @@ export default function SignUpPage() {
     const trimmedEmail = email.trim();
     const emailRegex: RegExp = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-    if (!trimmedUsername || !password || !confirmPassword) {
+    if (!trimmedUsername || !password || !confirmPassword || !trimmedEmail) {
       setError("Please fill in all fields");
       return;
     }
