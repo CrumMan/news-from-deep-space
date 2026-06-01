@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import postgres from 'postgres';
 import { error } from 'console';
 import { cookies } from 'next/headers';
-const sql = postgres(process.env.POSTGRES_NETLIFY_URL!, {ssl: 'require'});
+const sql = postgres(process.env.DATABASE_URL!, {ssl: 'require'});
 
 async function getAccount() {
     const cookieStore = await cookies();

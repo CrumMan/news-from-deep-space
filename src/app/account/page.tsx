@@ -13,6 +13,7 @@ import {
 type AccountDetails = {
   id: string;
   username: string;
+  email:string;
   streak: number;
   lastActive: string | null;
   isAdmin: boolean;
@@ -43,6 +44,7 @@ export default function AccountPage() {
         saveSession(localStorage.getItem("authToken") ?? "", {
           id: details.id,
           username: details.username,
+          email:details.email,
           streak: details.streak,
           isAdmin: details.isAdmin,
         });
@@ -123,6 +125,10 @@ export default function AccountPage() {
             <p style={rowStyle}>
               <strong>Username:</strong>
               <span>{account.username}</span>
+            </p>
+            <p style={rowStyle}>
+              <strong>Email:</strong>
+              <span>{account.email}</span>
             </p>
             <p style={rowStyle}>
               <strong>Role:</strong>
