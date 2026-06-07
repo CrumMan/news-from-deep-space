@@ -11,6 +11,7 @@ import {
   updateCombination,
 } from "./bot-config";
 import Modal from "./modal";
+import apiBuild from "./apiBuild"
 
 type CombinationPanelProps = {
   combinations: Combination[];
@@ -109,7 +110,7 @@ export default function CombinationPanel({
       return;
     }
     if (!draft.result.trim()) {
-      setFormError("Add a link or API URL.");
+      setFormError("Add a link or photo URL.");
       return;
     }
 
@@ -119,7 +120,7 @@ export default function CombinationPanel({
         await updateCombination(draft.id, {
           type: draft.type,
           result: draft.result.trim(),
-          apiKey: draft.type === "api" ? draft.apiKey.trim() || null : null,
+          apiKey: draft.type == "photo" ? draft.apiKey.trim() || null : null,
         });
       } else {
         await createCombination({
@@ -127,11 +128,12 @@ export default function CombinationPanel({
           keywordId2: draft.keywordId2,
           type: draft.type,
           result: draft.result.trim(),
-          apiKey: draft.type === "api" ? draft.apiKey.trim() || null : null,
+          apiKey: draft.type == "photo" ? draft.apiKey.trim() || null : null,
         });
       }
       const refreshed = await fetchCombinations();
       onChange(refreshed);
+      apiBuild;
       onNotify(draft.id ? "Combination updated." : "Combination created.");
       closeModal();
     } catch (error) {
@@ -147,7 +149,7 @@ export default function CombinationPanel({
     <div>
       <PanelHeader
         title="Word Combinations"
-        description="Pair two keywords to trigger a link or live API lookup when both appear in a user's message."
+        description="Pair two keywords to trigger a link or live photo lookup when both appear in a user's message."
         onCreate={openCreate}
         disabled={keywords.length < 2 || readOnly}
       />
@@ -263,7 +265,7 @@ export default function CombinationPanel({
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Type</label>
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              {(["link", "api"] as const).map((type) => {
+              {(["link", "photo"] as const).map((type) => {
                 const active = draft.type === type;
                 return (
                   <button
@@ -286,7 +288,8 @@ export default function CombinationPanel({
                       fontSize: "0.875rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.04em",
-                    }}
+                    }
+                  }
                   >
                     {type}
                   </button>
@@ -300,15 +303,15 @@ export default function CombinationPanel({
                 marginTop: "0.35rem",
               }}
             >
-              {draft.type === "api"
-                ? "API combos call a remote endpoint and show the link to the user."
+              {draft.type === "photo"
+                ? "photo combos call a remote endpoint and show the link to the user."
                 : "Link combos send the user directly to a fixed URL."}
             </p>
           </div>
 
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">
-              {draft.type === "api" ? "API URL" : "Link URL"}
+              {draft.type === "photo" ? "photo URL" : "Link URL"}
             </label>
             <input
               type="text"
@@ -316,16 +319,16 @@ export default function CombinationPanel({
               onChange={(e) => setDraft({ ...draft, result: e.target.value })}
               className="form-input"
               placeholder={
-                draft.type === "api"
-                  ? "https://api.nasa.gov/..."
+                draft.type === "photo"
+                  ? "https://photo.nasa.gov/..."
                   : "https://example.com/info"
               }
             />
           </div>
 
-          {draft.type === "api" && (
+          {draft.type === "photo" && (
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">API Key (optional)</label>
+              <label className="form-label">photo Key (optional)</label>
               <input
                 type="text"
                 value={draft.apiKey}
@@ -450,10 +453,10 @@ function CombinationCard({
           style={{
             ...typePillStyle,
             background:
-              combination.type === "api"
+              combination.type === "photo"
                 ? "rgba(187, 189, 246, 0.18)"
                 : "rgba(122, 89, 128, 0.3)",
-            color: combination.type === "api" ? "#bbbdf6" : "#f5b7e3",
+            color: combination.type === "photo" ? "#bbbdf6" : "#f5b7e3",
           }}
         >
           {combination.type.toUpperCase()}

@@ -101,8 +101,12 @@ export async function DELETE(request: Request, { params }: Params) {
   if (auth.ok === false) return auth.response;
 
   try {
+    await sql` 
+    DELETE FROM api_config 
+    WHERE combined_id = ${id}
+    `;
     const rows = await sql<{ id: string }[]>`
-      DELETE FROM combined_keywords WHERE id = ${id} RETURNING id
+    DELETE FROM combined_keywords WHERE id = ${id} RETURNING id
     `;
     if (rows.length === 0) return notFound("Combination not found");
     return NextResponse.json({ ok: true, id: rows[0].id });

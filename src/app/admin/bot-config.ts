@@ -5,7 +5,7 @@ export type Keyword = {
   created_at?: string;
 };
 
-export type CombinationType = "api" | "link";
+export type CombinationType = "photo" | "link";
 
 export type Combination = {
   id: string;
@@ -16,6 +16,17 @@ export type Combination = {
   type: CombinationType;
   result: string;
   api_key: string | null;
+  created_at?: string;
+};
+
+export type apiBuild = {
+  id: string;
+  type: string;
+  subtitle:string | null;
+  title:string | null;
+  text:string|null;
+  imageLinkWord:string|null;
+  result: string;
   created_at?: string;
 };
 
@@ -169,6 +180,16 @@ export async function deleteCombinationsByKeyword(
   );
 }
 
+export async function updateApi_details(
+  id:string,
+  input: {  type?: CombinationType;  title: string;  imageLinkWord?: string | null;  subtitle?: string | null;  text?: string | null; }): Promise<void>{
+    await apiFetch(`api/apiBuild/${id}`,{method:"PUT", body: input})
+  }
+
+  export function getApibyId(id:string){
+    return apiFetch(`api/apiBuild/${id}`, {method:"GET"})
+  }
+
 export function loadFallback(): string {
   if (typeof window === "undefined") return DEFAULT_FALLBACK;
   return window.localStorage.getItem(FALLBACK_STORAGE_KEY) ?? DEFAULT_FALLBACK;
@@ -178,3 +199,4 @@ export function saveFallback(value: string): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(FALLBACK_STORAGE_KEY, value);
 }
+
