@@ -9,6 +9,7 @@ import {
   deleteCombination,
   fetchCombinations,
   updateCombination,
+  fetchApiBuild
 } from "./bot-config";
 import Modal from "./modal";
 import ApiPanel from "./apiBuild-panel";
@@ -40,6 +41,7 @@ const emptyDraft: Draft = {
   apiKey: "",
 };
 
+
 export default function CombinationPanel({
   combinations,
   keywords,
@@ -52,6 +54,8 @@ export default function CombinationPanel({
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [api_buildId, setapi_buildId] = useState<string | null>(null);
+  const [apiResult, setApiResult] = useState<any>(null);
+  const [loadingApi, setLoadingApi] = useState(false);
   
   const sortedKeywords = useMemo(
     () => [...keywords].sort((a, b) => a.keyword.localeCompare(b.keyword)),
@@ -149,6 +153,7 @@ export default function CombinationPanel({
       setSaving(false);
     }
   };
+
 
   return (
     <div>
@@ -352,14 +357,14 @@ export default function CombinationPanel({
         </div>
       </Modal>
       <ApiPanel
-         open={!!api_buildId}
-         combinationId={api_buildId}
+        open={!!api_buildId}
+        combinationId={api_buildId}
         onClose={() => setapi_buildId(null)}
         Combinations={combinations}
         apis={[]}
         onChange={() => {}}
         onNotify={onNotify}
-/>
+      />
     </div>
   );
 }

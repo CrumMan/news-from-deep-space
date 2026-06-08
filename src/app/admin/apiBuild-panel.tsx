@@ -1,4 +1,5 @@
 import Modal from "./modal";
+import { useEffect } from "react";
 import { useMemo, useState } from "react";
 import{
     api_build,
@@ -11,6 +12,8 @@ import{
     fetchCombination,
     } from "./bot-config";
 import { patchFetch } from "next/dist/server/app-render/entry-base";
+
+
 
 type ApiPanelProps = {
   combinationId: string | null;
@@ -45,6 +48,31 @@ const emptyDraft: Draft = {
   text: null,
   imageLinkWord: null,
 }
+const runApiAndGetResult = async (combinationId: string) => {
+  console.log("combinationId being used:", combinationId);
+  
+  const data = await fetchCombination(combinationId);
+   console.log("DB DATA:", data);
+  if (!data) {
+  throw new Error("No API build found for this combinationId");
+}
+
+  const apiUrl = data.api_key
+    ? `${data.result}?api_key=${data.api_key}`
+    : data.result;
+
+   console.log("API URL:", apiUrl);
+  const response = await fetch(apiUrl);
+   console.log("response:", response.status);
+  if (!response.ok) {
+    throw new Error("External API failed");
+  }
+
+  const result = await response.json();
+  console.log("FINAL RESULT:", result);
+  return result;
+};
+
 export default function ApiPanel({
   combinationId,
   open,
@@ -59,6 +87,24 @@ export default function ApiPanel({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loadingApi, setLoadingApi] = useState(false);
+  const [apiResult, setApiResult] = useState<any>(null);
+
+  useEffect(() => {
+  if (!open || !combinationId) return;
+
+  const load = async () => {
+    try {
+      const result = await runApiAndGetResult(combinationId);
+      setApiResult(result);
+    } catch (err) {
+      setApiResult({ error: "Failed to load API" });
+    }
+  };
+
+  load();
+}, [open, combinationId]);
+
 if (!open || !combinationId) return null;
 
 
@@ -134,6 +180,17 @@ const closeModal = () => {
         setSaving(false);
       }
     };
+    const handleRunApi = async () => {
+setLoadingApi(true);
+try {
+  if (!draft.id) return;
+const result = await runApiAndGetResult(draft.id);
+  setApiResult(result);
+} finally {
+  setLoadingApi(false);
+}
+};
+
 
 return (
   <Modal
@@ -163,11 +220,34 @@ return (
               ? "Save Changes"
               : "Add Combination"}
         </button>
+        <button
+          type="button"
+          onClick={async () => {
+            if (!combinationId) return;
+            const result = await runApiAndGetResult(combinationId);
+            setApiResult(result);
+          }}
+        >
+          Load API Response
+        </button>
       </>
     }
   >
-<div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+ <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+  <div className="form-group">
+    <label className="form-label">API Response</label>
 
+    <textarea
+      className="form-input"
+      value={
+        apiResult
+          ? JSON.stringify(apiResult, null, 2)
+          : "No response loaded"
+      }
+      readOnly
+      style={{ minHeight: "200px", fontFamily: "monospace" }}
+    />
+  </div>
   <div className="form-group">
     <label className="form-label">Title</label>
     <input

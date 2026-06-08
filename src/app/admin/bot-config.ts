@@ -58,6 +58,7 @@ export function getCurrentAccount(): Account | null {
   }
 }
 
+
 export function saveSession(token: string, account: Account): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
@@ -145,9 +146,9 @@ export async function fetchCombinations(): Promise<Combination[]> {
   const data = await apiFetch<{ combinations: Combination[] }>("/api/combinations");
   return data.combinations;
 }
-export async function fetchCombination(id:string): Promise<Combination[]> {
-  const data = await apiFetch<{ combinations: Combination }>("/api/combinations/id");
-  return data.combinations[0];
+export async function fetchCombination(id: string): Promise<Combination> {
+  const data = await apiFetch<Combination>(`/api/combinations/${id}`);
+  return data;
 }
 
 export async function createCombination(input: {
@@ -181,6 +182,12 @@ export async function deleteCombinationsByKeyword(
     `/api/combinations/by-keyword/${keywordId}`,
     { method: "DELETE" },
   );
+}
+
+export async function fetchApiBuild(id: string) {
+  const res = await fetch(`/api/apiBuild/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch api build");
+  return res.json();
 }
 
 export async function updateApi_details(

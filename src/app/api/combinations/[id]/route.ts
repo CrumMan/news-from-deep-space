@@ -64,7 +64,7 @@ export async function PUT(request: Request, { params }: Params) {
     return badRequest("Invalid JSON body");
   }
 
-  if (body.type !== undefined && body.type !== "api" && body.type !== "photo") {
+  if (body.type !== undefined && body.type !== "link" && body.type !== "photo") {
     return badRequest('type must be "photo" or "link"');
   }
   if (body.result !== undefined && body.result.trim().length === 0) {
