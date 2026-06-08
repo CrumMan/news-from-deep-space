@@ -58,14 +58,14 @@ const runApiAndGetResult = async (combinationId: string) => {
 }
 
   const apiUrl = data.api_key
-    ? `${data.result}?api_key=${data.api_key}`
+    ? `${data.result}?${data.api_key}`
     : data.result;
 
    console.log("API URL:", apiUrl);
   const response = await fetch(apiUrl);
    console.log("response:", response.status);
   if (!response.ok) {
-    throw new Error("External API failed");
+    throw new Error("External API failed or is loading... Please reload API manually after ten seconds.");
   }
 
   const result = await response.json();
