@@ -14,6 +14,7 @@ import {
 } from "./bot-config";
 import KeywordPanel from "./keyword-panel";
 import CombinationPanel from "./combination-panel";
+import ApiPanel from "./apiBuild-panel";
 import Toast from "./toast";
 
 type TabId = "keywords" | "combinations" | "fallback";

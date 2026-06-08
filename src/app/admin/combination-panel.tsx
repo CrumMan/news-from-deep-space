@@ -11,8 +11,7 @@ import {
   updateCombination,
 } from "./bot-config";
 import Modal from "./modal";
-import apiBuild from "./apiBuild"
-
+import ApiPanel from "./apiBuild-panel";
 type CombinationPanelProps = {
   combinations: Combination[];
   keywords: Keyword[];
@@ -20,6 +19,8 @@ type CombinationPanelProps = {
   onNotify: (message: string, tone?: "success" | "error") => void;
   readOnly?: boolean;
 };
+
+
 
 type Draft = {
   id: string | null;
@@ -50,7 +51,8 @@ export default function CombinationPanel({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
-
+  const [api_buildId, setapi_buildId] = useState<string | null>(null);
+  
   const sortedKeywords = useMemo(
     () => [...keywords].sort((a, b) => a.keyword.localeCompare(b.keyword)),
     [keywords],
@@ -122,18 +124,21 @@ export default function CombinationPanel({
           result: draft.result.trim(),
           apiKey: draft.type == "photo" ? draft.apiKey.trim() || null : null,
         });
+        setapi_buildId(draft.id);
       } else {
-        await createCombination({
-          keywordId1: draft.keywordId1,
-          keywordId2: draft.keywordId2,
-          type: draft.type,
-          result: draft.result.trim(),
-          apiKey: draft.type == "photo" ? draft.apiKey.trim() || null : null,
-        });
+        const createdCombination = await createCombination({
+         keywordId1: draft.keywordId1,
+         keywordId2: draft.keywordId2,
+         type: draft.type,
+         result: draft.result.trim(),
+         apiKey: draft.type === "photo"
+         ? draft.apiKey.trim() || null
+         : null,
+});
+       setapi_buildId(createdCombination.id);
       }
       const refreshed = await fetchCombinations();
       onChange(refreshed);
-      apiBuild;
       onNotify(draft.id ? "Combination updated." : "Combination created.");
       closeModal();
     } catch (error) {
@@ -311,7 +316,7 @@ export default function CombinationPanel({
 
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">
-              {draft.type === "photo" ? "photo URL" : "Link URL"}
+              {draft.type === "photo" ? "API URL" : "Link URL"}
             </label>
             <input
               type="text"
@@ -328,7 +333,7 @@ export default function CombinationPanel({
 
           {draft.type === "photo" && (
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">photo Key (optional)</label>
+              <label className="form-label">API Key (optional)</label>
               <input
                 type="text"
                 value={draft.apiKey}
@@ -346,9 +351,19 @@ export default function CombinationPanel({
           )}
         </div>
       </Modal>
+      <ApiPanel
+         open={!!api_buildId}
+         combinationId={api_buildId}
+        onClose={() => setapi_buildId(null)}
+        Combinations={combinations}
+        apis={[]}
+        onChange={() => {}}
+        onNotify={onNotify}
+/>
     </div>
   );
 }
+
 
 function PanelHeader({
   title,

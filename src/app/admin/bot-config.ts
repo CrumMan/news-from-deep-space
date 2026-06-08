@@ -19,14 +19,13 @@ export type Combination = {
   created_at?: string;
 };
 
-export type apiBuild = {
+export type api_build = {
   id: string;
   type: string;
   subtitle:string | null;
   title:string | null;
   text:string|null;
   imageLinkWord:string|null;
-  result: string;
   created_at?: string;
 };
 
@@ -146,6 +145,10 @@ export async function fetchCombinations(): Promise<Combination[]> {
   const data = await apiFetch<{ combinations: Combination[] }>("/api/combinations");
   return data.combinations;
 }
+export async function fetchCombination(id:string): Promise<Combination[]> {
+  const data = await apiFetch<{ combinations: Combination }>("/api/combinations/id");
+  return data.combinations[0];
+}
 
 export async function createCombination(input: {
   keywordId1: string;
@@ -154,7 +157,7 @@ export async function createCombination(input: {
   result: string;
   apiKey?: string | null;
 }): Promise<{ id: string }> {
-  return apiFetch<{ id: string }>("/api/combinations", {
+  return apiFetch<{ id: string, type:string }>("/api/combinations", {
     method: "POST",
     body: input,
   });
@@ -182,10 +185,26 @@ export async function deleteCombinationsByKeyword(
 
 export async function updateApi_details(
   id:string,
-  input: {  type?: CombinationType;  title: string;  imageLinkWord?: string | null;  subtitle?: string | null;  text?: string | null; }): Promise<void>{
+  input: {  
+    type?: CombinationType;  
+    title: string;  
+    imageLinkWord?: string | null;  
+    subtitle?: string | null;  
+    text?: string | null; }): Promise<void>{
+    
     await apiFetch(`api/apiBuild/${id}`,{method:"PUT", body: input})
   }
 
+  export async function createApi_Details(
+    id:string, 
+    input: {  type?: CombinationType;  
+      title: string;  
+      imageLinkWord?: string | null;  
+      subtitle?: string | null;  
+      text?: string | null; })
+      {
+        await apiFetch(`api/apiBuild/${id}`,{method:"POST", body: input})
+      }
   export function getApibyId(id:string){
     return apiFetch(`api/apiBuild/${id}`, {method:"GET"})
   }
@@ -199,4 +218,3 @@ export function saveFallback(value: string): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(FALLBACK_STORAGE_KEY, value);
 }
-

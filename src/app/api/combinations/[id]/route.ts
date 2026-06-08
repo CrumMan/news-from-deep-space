@@ -64,8 +64,8 @@ export async function PUT(request: Request, { params }: Params) {
     return badRequest("Invalid JSON body");
   }
 
-  if (body.type !== undefined && body.type !== "api" && body.type !== "link") {
-    return badRequest('type must be "api" or "link"');
+  if (body.type !== undefined && body.type !== "api" && body.type !== "photo") {
+    return badRequest('type must be "photo" or "link"');
   }
   if (body.result !== undefined && body.result.trim().length === 0) {
     return badRequest("result cannot be empty");
@@ -103,7 +103,7 @@ export async function DELETE(request: Request, { params }: Params) {
   try {
     await sql` 
     DELETE FROM api_config 
-    WHERE combined_id = ${id}
+    WHERE id = ${id}
     `;
     const rows = await sql<{ id: string }[]>`
     DELETE FROM combined_keywords WHERE id = ${id} RETURNING id

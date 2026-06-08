@@ -30,7 +30,7 @@ type CreateBody = {
 };
 
 
-type apiBuildRow = {
+type api_buildRow = {
   id: string;
   type: string;
   subtitle:string | null;
@@ -46,17 +46,17 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   try {
-    const rows = await sql<apiBuildRow[]>`
+    const rows = await sql<api_buildRow[]>`
       SELECT
         a.id,
         a.type,
         a.subtitle,
         a.title,
-        a.text, a.imageLinkWord, a.result, a.created_at
-      FROM apiBuild a
+        a.text, a.imageLinkWord, a.created_at
+      FROM api_config a
       WHERE a.id = ${id}
     `;
-    if (rows.length === 0) return notFound("Combination not found");
+    if(!rows.length) return NextResponse.json(null);
     return NextResponse.json(rows[0]);
   } catch (error) {
     console.error("Combination read failed", error);
@@ -71,12 +71,14 @@ export async function DELETE(request: Request, { params }: Params) {
   try {
     await sql` 
     DELETE FROM api_config 
-    WHERE combined_id = ${id}
+    WHERE id = ${id}
     `;
     const rows = await sql<{ id: string }[]>`
     DELETE FROM combined_keywords WHERE id = ${id} RETURNING id
     `;
-    if (rows.length === 0) return notFound("Combination not found");
+    if (!rows.length) {
+        return NextResponse.json({ ok: true, deleted: false });
+    }
     return NextResponse.json({ ok: true, id: rows[0].id });
   } catch (error) {
     console.error("Combination delete failed", error);
@@ -96,8 +98,8 @@ export async function PUT(request: Request, { params }: Params) {
     return badRequest("Invalid JSON body");
   }
 
-  if (body.type !== undefined && body.type !== "api" && body.type !== "link") {
-    return badRequest('type must be "api" or "link"');
+  if (body.type !== undefined && body.type !== "api" && body.type !== "photo") {
+    return badRequest('type must be "photo" or "link"');
   }
   if (body.result !== undefined && body.result.trim().length === 0) {
     return badRequest("result cannot be empty");
@@ -123,17 +125,15 @@ export async function PUT(request: Request, { params }: Params) {
   }
   try {
     const rows = await sql<{ id: string }[]>`
-      UPDATE api_config SET
+    UPDATE api_config SET
         type = COALESCE(${body.type ?? null}, type),
         title = COALESCE(${body.title?.trim() ?? null}, title),
         subtitle = COALESCE(${body.subtitle?.trim() ?? null}, subtitle),
         text = COALESCE(${body.text?.trim() ?? null}, text),
-        imageLinkWord = COALESCE(${body.imageLinkWord?.trim() ?? null}, imageLinkWord),
-        result = COALESCE(${body.result?.trim() ?? null}, result),
-        title = CASE WHEN ${body.title !== undefined} THEN ${body.title ?? null} ELSE api_key END
-      WHERE id = ${id}
-      RETURNING id
-    `;
+        imagelinkword = COALESCE(${body.imageLinkWord?.trim() ?? null}, imagelinkword)
+    WHERE id = ${id}
+    RETURNING id
+`;
     if (rows.length === 0) return notFound("API_config not found");
     return NextResponse.json({ ok: true, id: rows[0].id });
   } catch (error) {
@@ -166,14 +166,25 @@ export async function POST(request: Request, { params }: Params) {
     if (body.type == "link" &&( !subtitle || !text )) {
     return badRequest('An api_conifg must have a subtitle or text');
   }
-  if (!result || result.trim().length === 0) {
-    return badRequest("result (link or api URL) is required");
-  }
   try{
-  const rows = await sql<{ id: string }[]>`
-      INSERT INTO api_config (id, type, result, title, subtitle, text, imageLinkWord)
-      VALUES (${id}, ${type}, ${result.trim()}, ${title}, ${subtitle}, ${text}, ${imageLinkWord})
-      RETURNING id
+    const rows = await sql<{ id: string }[]>`
+    INSERT INTO api_config (
+        id,
+        type,
+        title,
+        subtitle,
+        text,
+        imagelinkword
+    )
+    VALUES (
+        ${id},
+        ${type},
+        ${title},
+        ${subtitle},
+        ${text},
+        ${imageLinkWord}
+    )
+    RETURNING id
     `;
     return NextResponse.json({ id: rows[0].id }, { status: 201 });
   } catch (error) {

@@ -69,11 +69,8 @@ export async function POST(request: Request) {
   if (keywordId1 === keywordId2) {
     return badRequest("A combination requires two different keywords");
   }
-  if (type !== "api" && type !== "link") {
-    return badRequest('type must be "api" or "link"');
-  }
-  if (!result || result.trim().length === 0) {
-    return badRequest("result (link or api URL) is required");
+  if (type !== "photo" && type !== "link") {
+    return badRequest('type must be "photo" or "link"');
   }
 
   try {
