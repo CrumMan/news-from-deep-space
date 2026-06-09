@@ -631,7 +631,7 @@ function findMatches(
 
 function buildLinkForCombination(combination: Combination): BotLink {
   const label = `${combination.keyword1} + ${combination.keyword2}`;
-  if (combination.type === "api") {
+  if (combination.type === "photo") {
     const separator = combination.result.includes("?") ? "&" : "?";
     const url = combination.api_key
       ? `${combination.result}${separator}api_key=${encodeURIComponent(combination.api_key)}`
@@ -719,7 +719,7 @@ export default function ChatBot() {
       return {
         id: Date.now(),
         text:
-          combination.type === "api"
+          combination.type === "photo"
             ? `Here's today's data for "${combination.keyword1}" and "${combination.keyword2}":`
             : `Here's the resource for "${combination.keyword1}" and "${combination.keyword2}":`,
         isUser: false,
