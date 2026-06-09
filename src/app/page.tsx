@@ -2,46 +2,60 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { useStreakIncrement } from "./components/use-streak";
+import ContentApiLink from "./components/content-api-link";
+import {
+  DEFAULT_ARTICLE_API,
+  DEFAULT_PHOTO_API,
+} from "./lib/content-api-cookie";
 
-const PLACEHOLDER_PHOTO = {
-  title: "The Majestic Andromeda Galaxy",
-  url: "/placeholder-space.jpg",
-  explanation:
-    "The Andromeda Galaxy is a barred spiral galaxy approximately 2.5 million light-years from Earth. It's the nearest major galaxy to the Milky Way and contains about one trillion stars.",
-  date: "2024-01-15",
+type ApodPhoto = {
+  date: string;
+  title: string;
+  explanation: string;
+  url: string;
+  media_type: string;
 };
 
-const PLACEHOLDER_ARTICLE = {
-  id: "1",
-  title: "NASA's Perseverance Rover Discovers Organic Matter on Mars",
-  summary:
-    "NASA's Perseverance rover has discovered complex organic matter in the Jezero Crater on Mars, suggesting that the planet may have once harbored microbial life.",
-  imageUrl: "/placeholder-mars.jpg",
-  content: "Full article content would go here...",
-  published_at: "2024-01-15",
-  news_site: "Space News Daily",
-  url: "#",
+type ArticlePreview = {
+  id: string;
+  title: string;
+  summary: string;
+  image_url: string | null;
 };
 
 export default function HomePage() {
-  const [dailyPhoto, setDailyPhoto] = useState(PLACEHOLDER_PHOTO);
-  const [dailyArticle, setDailyArticle] = useState(PLACEHOLDER_ARTICLE);
+  const [dailyPhoto, setDailyPhoto] = useState<ApodPhoto | null>(null);
+  const [dailyArticle, setDailyArticle] = useState<ArticlePreview | null>(null);
   useStreakIncrement();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-    setIsLoggedIn(loggedIn);
+    let cancelled = false;
+    (async () => {
+      try {
+        const [photoRes, articleRes] = await Promise.all([
+          fetch("/api/apod"),
+          fetch("/api/articles?limit=1"),
+        ]);
+        if (cancelled) return;
+        if (photoRes.ok) {
+          setDailyPhoto((await photoRes.json()) as ApodPhoto);
+        }
+        if (articleRes.ok) {
+          const data = (await articleRes.json()) as {
+            daily: ArticlePreview | null;
+          };
+          setDailyArticle(data.daily);
+        }
+      } catch (err) {
+        console.error("Home feed load failed", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("username");
-    setIsLoggedIn(false);
-  };
 
   return (
     <>
@@ -62,19 +76,17 @@ export default function HomePage() {
             width: "100%",
             height: "100%",
             backgroundImage:
-              "url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1600')",
+              dailyPhoto?.media_type === "image"
+                ? `url('${dailyPhoto.url}')`
+                : "url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1600')",
             backgroundSize: "cover",
             backgroundPosition: "center",
-            backgroundAttachment: "fixed",
           }}
         >
           <div
             style={{
               position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
+              inset: 0,
               backgroundColor: "rgba(0, 0, 0, 0.5)",
             }}
           />
@@ -132,37 +144,28 @@ export default function HomePage() {
               justifyContent: "center",
             }}
           >
-            <Link href="/article" className="button-primary">
+            <ContentApiLink
+              href="/article"
+              apiUrl={DEFAULT_ARTICLE_API}
+              kind="article"
+              className="button-primary"
+            >
               Read Daily Article
-            </Link>
-            <Link href="/recent-photos" className="button-secondary">
+            </ContentApiLink>
+            <ContentApiLink
+              href="/recent-photos"
+              apiUrl={DEFAULT_PHOTO_API}
+              kind="photo"
+              className="button-secondary"
+            >
               View Space Photos
-            </Link>
+            </ContentApiLink>
           </div>
         </div>
       </div>
 
       <div className="container">
         <div className="hero-card">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "1rem",
-              marginBottom: "2rem",
-            }}
-          >
-            {/* {isLoggedIn ? (
-              <button onClick={handleLogout} className="button-secondary">
-                Logout
-              </button>
-            ) : (
-              <Link href="/login" className="button-secondary">
-                Login
-              </Link>
-            )} */}
-          </div>
-
           <div className="grid-2">
             <div className="card">
               <h2
@@ -171,50 +174,71 @@ export default function HomePage() {
               >
                 Daily Space Photo
               </h2>
-              <Link href={`/photo/${dailyPhoto.date}`}>
-                <div
-                  style={{
-                    position: "relative",
-                    height: "200px",
-                    marginBottom: "1rem",
-                    backgroundColor: "#2a2a4a",
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
+              {dailyPhoto ? (
+                <>
+                  <ContentApiLink
+                    href={`/photo/${dailyPhoto.date}`}
+                    apiUrl={DEFAULT_PHOTO_API}
+                    kind="photo"
+                  >
+                    <div
+                      style={{
+                        position: "relative",
+                        height: "200px",
+                        marginBottom: "1rem",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                        backgroundColor: "#2a2a4a",
+                      }}
+                    >
+                      {dailyPhoto.media_type === "image" ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={dailyPhoto.url}
+                          alt={dailyPhoto.title}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#bbbdf6",
+                          }}
+                        >
+                          Video APOD
+                        </div>
+                      )}
+                    </div>
+                  </ContentApiLink>
+                  <h3 className="card-title">{dailyPhoto.title}</h3>
+                  <p className="card-description">
+                    {dailyPhoto.explanation.substring(0, 150)}…
+                  </p>
+                  <ContentApiLink
+                    href={`/photo/${dailyPhoto.date}`}
+                    apiUrl={DEFAULT_PHOTO_API}
+                    kind="photo"
+                    className="card-link"
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      display: "flex",
+                      display: "inline-flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      background:
-                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      gap: "0.35rem",
                     }}
                   >
-                    <span style={{ color: "#000", fontSize: "14px" }}>
-                      Space Image Placeholder
-                    </span>
-                  </div>
-                </div>
-              </Link>
-              <h3 className="card-title">{dailyPhoto.title}</h3>
-              <p className="card-description">
-                {dailyPhoto.explanation.substring(0, 150)}...
-              </p>
-              <Link
-                href={`/photo/${dailyPhoto.date}`}
-                className="card-link"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                }}
-              >
-                <span>View Description</span>
-                <ArrowRight size={14} />
-              </Link>
+                    <span>View Description</span>
+                    <ArrowRight size={14} />
+                  </ContentApiLink>
+                </>
+              ) : (
+                <p className="card-description">Loading today&apos;s photo…</p>
+              )}
             </div>
 
             <div className="card">
@@ -224,50 +248,73 @@ export default function HomePage() {
               >
                 Featured Article
               </h2>
-              <Link href="/article">
-                <div
-                  style={{
-                    position: "relative",
-                    height: "200px",
-                    marginBottom: "1rem",
-                    backgroundColor: "#2a2a4a",
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
+              {dailyArticle ? (
+                <>
+                  <ContentApiLink
+                    href={`/article/${dailyArticle.id}`}
+                    apiUrl={DEFAULT_ARTICLE_API}
+                    kind="article"
+                  >
+                    <div
+                      style={{
+                        position: "relative",
+                        height: "200px",
+                        marginBottom: "1rem",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                        backgroundColor: "#2a2a4a",
+                      }}
+                    >
+                      {dailyArticle.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={dailyArticle.image_url}
+                          alt={dailyArticle.title}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background:
+                              "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                            color: "#111",
+                          }}
+                        >
+                          Space News
+                        </div>
+                      )}
+                    </div>
+                  </ContentApiLink>
+                  <h3 className="card-title">{dailyArticle.title}</h3>
+                  <p className="card-description">
+                    {dailyArticle.summary.substring(0, 150)}…
+                  </p>
+                  <ContentApiLink
+                    href={`/article/${dailyArticle.id}`}
+                    apiUrl={DEFAULT_ARTICLE_API}
+                    kind="article"
+                    className="card-link"
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      display: "flex",
+                      display: "inline-flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      background:
-                        "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                      gap: "0.35rem",
                     }}
                   >
-                    <span style={{ color: "black", fontSize: "14px" }}>
-                      Article Image Placeholder
-                    </span>
-                  </div>
-                </div>
-              </Link>
-              <h3 className="card-title">{dailyArticle.title}</h3>
-              <p className="card-description">
-                {dailyArticle.summary.substring(0, 150)}...
-              </p>
-              <Link
-                href="/article"
-                className="card-link"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                }}
-              >
-                <span>Read Full Article</span>
-                <ArrowRight size={14} />
-              </Link>
+                    <span>Read Full Article</span>
+                    <ArrowRight size={14} />
+                  </ContentApiLink>
+                </>
+              ) : (
+                <p className="card-description">Loading featured article…</p>
+              )}
             </div>
           </div>
         </div>
