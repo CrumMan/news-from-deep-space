@@ -169,6 +169,13 @@ export async function deleteCombinationsByKeyword(
   );
 }
 
+export async function updateAccountProfile(
+  id: string,
+  input: { username?: string; email?: string },
+): Promise<Account> {
+  return apiFetch<Account>(`/api/accounts/${id}`, { method: "PUT", body: input });
+}
+
 export function loadFallback(): string {
   if (typeof window === "undefined") return DEFAULT_FALLBACK;
   return window.localStorage.getItem(FALLBACK_STORAGE_KEY) ?? DEFAULT_FALLBACK;
