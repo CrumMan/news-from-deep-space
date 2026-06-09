@@ -18,11 +18,19 @@ export async function messengerResopnse(message:string){
     //placeholder is below
     const api_words = {"id":"8fafe567-993d-4e21-9781-6e34aaac2fba","type":"photo","title":"change","subtitle":"change","text":"change","imagelinkword":"change","created_at":"2026-06-08 04:54:22.621905"};
     const api_result = await runApiAndGetResult(api_words.id)
-    if (api_words.type = "photo"){
-        response = `<a href=(ADD THE LINK FOR THE DYNAMIC PHOTO PAGE/${api_words.id})><img src=${api_result.api_words.imageLinkWord} alt=${api_result.api_words.title}></a>`
+    if (api_words.type === "photo"){
+        return {
+        type: "photo",
+        title: api_words.title,
+        imageUrl: api_result.imageLinkWord,
+        pageId: api_words.id,
+        };
     }
-    if (api_words.type = "link"){
-        response = `<a href=(ADD THE LINK FOR THE DYNAMIC PHOTO PAGE/${api_words.id})>`
+    if (api_words.type === "link"){
+        return{type: "link",
+            title:api_words.title,
+            pageId: api_words.id,
+        }
     }
     return response;
     
