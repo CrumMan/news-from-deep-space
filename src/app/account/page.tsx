@@ -8,6 +8,7 @@ import {
   apiFetch,
   getCurrentAccount,
   saveSession,
+  updateAccountProfile,
 } from "../admin/bot-config";
 
 type AccountDetails = {
@@ -32,6 +33,12 @@ export default function AccountPage() {
   const [pwSuccess, setPwSuccess] = useState<string | null>(null);
   const [pwLoading, setPwLoading] = useState(false);
 
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
   useEffect(() => {
     const session = getCurrentAccount();
     if (!session) {
@@ -41,6 +48,8 @@ export default function AccountPage() {
     apiFetch<AccountDetails>(`/api/accounts/${session.id}`)
       .then((details) => {
         setAccount(details);
+        setEditUsername(details.username);
+        setEditEmail(details.email);
         saveSession(localStorage.getItem("authToken") ?? "", {
           id: details.id,
           username: details.username,
@@ -78,6 +87,36 @@ export default function AccountPage() {
       );
     } finally {
       setPwLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileSuccess(null);
+    if (!account) return;
+
+    setProfileLoading(true);
+    try {
+      const updated = await updateAccountProfile(account.id, {
+        username: editUsername.trim(),
+        email: editEmail.trim(),
+      });
+      setAccount({ ...account, username: updated.username, email: updated.email });
+      saveSession(localStorage.getItem("authToken") ?? "", {
+        id: account.id,
+        username: updated.username,
+        email: updated.email,
+        streak: account.streak,
+        isAdmin: account.isAdmin,
+      });
+      setProfileSuccess("Profile updated.");
+    } catch (err) {
+      setProfileError(
+        err instanceof Error ? err.message : "Could not update profile",
+      );
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -121,15 +160,40 @@ export default function AccountPage() {
 
         <div style={sectionStyle}>
           <h2 style={{ margin: 0, marginBottom: "1rem" }}>Profile</h2>
-          <div style={{ lineHeight: 1.8 }}>
-            <p style={rowStyle}>
-              <strong>Username:</strong>
-              <span>{account.username}</span>
-            </p>
-            <p style={rowStyle}>
-              <strong>Email:</strong>
-              <span>{account.email}</span>
-            </p>
+          <form onSubmit={handleUpdateProfile}>
+            <div className="form-group">
+              <label className="form-label">Username</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editUsername}
+                onChange={(e) => setEditUsername(e.target.value)}
+                disabled={profileLoading}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input
+                type="email"
+                className="form-input"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                disabled={profileLoading}
+              />
+            </div>
+            {profileError && (
+              <div className="error-message">
+                <p className="error-text">{profileError}</p>
+              </div>
+            )}
+            {profileSuccess && (
+              <p style={{ color: "#86efac", marginBottom: "1rem" }}>{profileSuccess}</p>
+            )}
+            <button type="submit" className="button-primary" disabled={profileLoading}>
+              {profileLoading ? "Saving…" : "Save Profile"}
+            </button>
+          </form>
+          <div style={{ lineHeight: 1.8, marginTop: "1.25rem" }}>
             <p style={rowStyle}>
               <strong>Role:</strong>
               <span>{account.isAdmin ? "Admin" : "Member"}</span>
