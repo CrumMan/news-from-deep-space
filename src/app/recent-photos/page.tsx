@@ -21,25 +21,43 @@ export default function RecentPhotosPage() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    let unmounted = false;
+    let timedOut = false;
+
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 30_000);
+
     (async () => {
       try {
-        const res = await fetch("/api/apod/recent?count=12");
+        const res = await fetch("/api/apod/recent?count=12", {
+          signal: controller.signal,
+        });
+        if (unmounted) return;
         if (!res.ok) throw new Error("Failed to load photos");
         const data = (await res.json()) as { photos: ApodPhoto[] };
-        if (!cancelled) {
-          setPhotos(data.photos ?? []);
-          setError(false);
-        }
+        setPhotos(data.photos ?? []);
+        setError(false);
       } catch (err) {
+        if (unmounted) return;
+        if (err instanceof DOMException && err.name === "AbortError") {
+          if (timedOut) setError(true);
+          return;
+        }
         console.error(err);
-        if (!cancelled) setError(true);
+        setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        window.clearTimeout(timeoutId);
+        if (!unmounted) setLoading(false);
       }
     })();
+
     return () => {
-      cancelled = true;
+      unmounted = true;
+      controller.abort();
+      window.clearTimeout(timeoutId);
     };
   }, []);
 
