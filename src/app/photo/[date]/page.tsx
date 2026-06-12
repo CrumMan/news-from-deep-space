@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useStreakIncrement } from "../../components/use-streak";
-import ContentApiLink from "../../components/content-api-link";
 import {
   DEFAULT_PHOTO_API,
   fetchContentApi,
+  setContentApiCookie,
 } from "../../lib/content-api-cookie";
 
 type ApodPhoto = {
@@ -26,35 +26,44 @@ export default function PhotoDetailPage() {
   const dateStr = typeof date === "string" ? date : "";
   const [photo, setPhoto] = useState<ApodPhoto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   useStreakIncrement();
 
-  useEffect(() => {
-    if (!dateStr) return;
+  const loadPhoto = useCallback(
+    async (options?: { refresh?: boolean }) => {
+      if (!dateStr) return;
 
-    let cancelled = false;
-    (async () => {
+      const isRefresh = options?.refresh === true;
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+
       try {
-        setLoading(true);
         const data = await fetchContentApi<ApodPhoto>("photo", "", {
           date: dateStr,
+          ...(isRefresh ? { _: String(Date.now()) } : {}),
         });
-        if (!cancelled) {
-          setPhoto(data);
-          setError(false);
-        }
+        setPhoto(data);
+        setError(false);
       } catch (err) {
         console.error("Photo load failed", err);
-        if (!cancelled) setError(true);
+        if (!isRefresh) setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isRefresh) setRefreshing(false);
+        else setLoading(false);
       }
-    })();
+    },
+    [dateStr],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [dateStr]);
+  useEffect(() => {
+    void loadPhoto();
+  }, [loadPhoto]);
+
+  const handleRefresh = () => {
+    setContentApiCookie(DEFAULT_PHOTO_API, "photo");
+    void loadPhoto({ refresh: true });
+  };
 
   if (loading) {
     return (
@@ -172,15 +181,15 @@ export default function PhotoDetailPage() {
         <p style={{ lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{photo.explanation}</p>
 
         <div style={{ marginTop: "2rem" }}>
-          <ContentApiLink
-            href={`/photo/${photo.date}`}
-            apiUrl={DEFAULT_PHOTO_API}
-            kind="photo"
+          <button
+            type="button"
             className="button-secondary"
             style={{ display: "inline-block" }}
+            onClick={handleRefresh}
+            disabled={refreshing}
           >
-            Refresh from API
-          </ContentApiLink>
+            {refreshing ? "Refreshing…" : "Refresh from API"}
+          </button>
         </div>
       </div>
     </div>
