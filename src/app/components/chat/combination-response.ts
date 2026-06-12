@@ -110,6 +110,29 @@ function isArticleEndpoint(url: string): boolean {
   return url.includes("/api/articles") || url.includes("/article");
 }
 
+function isDirectImageUrl(url: string): boolean {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase();
+    return /\.(jpg|jpeg|png|gif|webp|avif|bmp|svg)$/.test(pathname);
+  } catch {
+    return /\.(jpg|jpeg|png|gif|webp|avif|bmp|svg)(\?|$)/i.test(url);
+  }
+}
+
+function buildImageAttachment(
+  href: string,
+  label: string,
+  alt?: string,
+): ChatAttachment {
+  return {
+    type: "image",
+    imageUrl: href,
+    alt: alt ?? label,
+    href,
+    linkText: `View ${label}`,
+  };
+}
+
 function isValidFetchTarget(result: string): boolean {
   if (!result.trim() || result.trim().toLowerCase() === "apiurl") return false;
   if (isApodResult(result)) return true;
@@ -121,6 +144,9 @@ function userFacingIntro(combination: Combination): string {
   const label = combinationLabel(combination);
   if (isApodResult(combination.result)) {
     return `Here's today's astronomy picture for ${label}:`;
+  }
+  if (isDirectImageUrl(combination.result)) {
+    return `Here's a space image for ${label}:`;
   }
   if (
     combination.type === "link" ||
@@ -207,6 +233,14 @@ export async function buildCombinationResponse(
         text: intro,
         links: [{ text: linkText, url: href }],
         attachments: [{ type: "link", linkText, href, imageUrl: previewImage }],
+      };
+    }
+
+    if (isDirectImageUrl(href)) {
+      return {
+        text: intro,
+        links: [{ text: linkText, url: href }],
+        attachments: [buildImageAttachment(href, label)],
       };
     }
 

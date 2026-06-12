@@ -28,6 +28,19 @@ const WELCOME_MESSAGE: ChatMessage = {
   isUser: false,
 };
 
+function isExternalHref(href: string): boolean {
+  return /^https?:\/\//i.test(href);
+}
+
+const imageStyle: React.CSSProperties = {
+  width: "100%",
+  maxHeight: "160px",
+  objectFit: "cover",
+  borderRadius: "8px",
+  border: "1px solid rgba(187, 189, 246, 0.25)",
+  cursor: "pointer",
+};
+
 function ChatAttachments({
   message,
   onNavigate,
@@ -58,30 +71,41 @@ function ChatAttachments({
       {message.attachments?.map((attachment, idx) => (
         <div key={`att-${idx}`}>
           {attachment.type === "image" && attachment.imageUrl && (
-            <a
-              href={attachment.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: "block", textDecoration: "none" }}
-              onClick={() => saveLinkCookie(attachment.href)}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={attachment.imageUrl}
-                alt={attachment.alt ?? "Space photo"}
-                style={{
-                  width: "100%",
-                  maxHeight: "160px",
-                  objectFit: "cover",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(187, 189, 246, 0.25)",
-                  cursor: "pointer",
+            isExternalHref(attachment.href) ? (
+              <a
+                href={attachment.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "block", textDecoration: "none" }}
+                onClick={() => saveLinkCookie(attachment.href)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={attachment.imageUrl}
+                  alt={attachment.alt ?? "Space photo"}
+                  style={imageStyle}
+                />
+              </a>
+            ) : (
+              <Link
+                href={attachment.href}
+                style={{ display: "block", textDecoration: "none" }}
+                onClick={() => {
+                  saveLinkCookie(attachment.href);
+                  onNavigate?.();
                 }}
-              />
-            </a>
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={attachment.imageUrl}
+                  alt={attachment.alt ?? "Space photo"}
+                  style={imageStyle}
+                />
+              </Link>
+            )
           )}
           {attachment.linkText && (
-            attachment.type === "image" ? (
+            attachment.type === "image" && isExternalHref(attachment.href) ? (
               <a
                 href={attachment.href}
                 target="_blank"
@@ -115,8 +139,7 @@ function ChatAttachments({
             !message.attachments?.some((a) => a.href === link.url),
         )
         .map((link, idx) => {
-          const isExternal = /^https?:\/\//i.test(link.url);
-          if (isExternal) {
+          if (isExternalHref(link.url)) {
             return (
               <a
                 key={`link-${idx}`}
